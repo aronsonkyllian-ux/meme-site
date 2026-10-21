@@ -400,6 +400,8 @@ function sky() {            // fond étoilé statique (dessiné une fois, aucune
 async function load() {
   const names = ['status', 'wide', 'ultra10', 'paper10', 'signals', 'ui'];
   const r = await Promise.all(names.map(J)); names.forEach((n, i) => D[n] = r[i]);
+  // ui.json n'est valable que s'il vient du même cycle que status.json (sinon : périmé, traité comme non publié)
+  if (D.ui && (!D.status || !D.ui.genere || Math.abs(D.ui.genere - D.status.genere) > 15 * 60e3 || D.ui.erreur)) D.ui = null;
   const X = derive();
   const g = document.querySelector('.grid');
   let wb = $('waitBanner');
