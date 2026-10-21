@@ -191,10 +191,11 @@ function renderOrders() {
   rows.sort((a, b) => (a.status !== 'ouvert') - (b.status !== 'ouvert') || b.created_ts - a.created_ts);
   const open = rows.filter(r => r.status === 'ouvert');
   $('ordCnt').textContent = `(${open.length} ouvert${open.length > 1 ? 's' : ''})`;
-  $('ord').innerHTML = `<tr><th>Symbole</th><th class="l">Carnet</th><th class="l">Statut</th><th>Rempli</th><th>Prix limite</th><th class="hm">Montant</th><th>Âge</th><th class="hm">Type</th></tr>` +
-    (rows.slice(0, 12).map(o => { const [t, c] = stLbl(o.status); return `<tr><td><span class="sym">${coin(o.market)}${esc(base(o.market))}</span></td><td class="l">${book(o.b)}</td>
-      <td class="l"><span class="st ${c}">${esc(t)}</span></td><td>${o.qty ? nf(o.filled_qty / o.qty * 100, 0) + ' %' : '—'}</td><td>${px(o.limit_px)}</td><td class="hm">${eur(o.qty * o.limit_px)}</td>
-      <td>${o.status === 'ouvert' ? dur((Date.now() - o.created_ts) / 1000) : '<span class="mut" title="ordre clos">clos</span>'}</td><td class="g hm">Achat limite</td></tr>`; }).join('')
+  $('ord').innerHTML = `<tr><th>Symbole</th><th class="l hm">Carnet</th><th class="l">Statut</th><th>Rempli</th><th>Prix limite</th><th class="hm">Montant</th><th class="hm">Âge</th><th class="hm">Type</th></tr>` +
+    (rows.slice(0, 12).map(o => { const [t, c] = stLbl(o.status), age = o.status === 'ouvert' ? dur((Date.now() - o.created_ts) / 1000) : '<span class="mut" title="ordre clos">clos</span>';
+      return `<tr><td><span class="sym">${coin(o.market)}${esc(base(o.market))}</span><div class="sm-only">${book(o.b)}</div></td><td class="l hm">${book(o.b)}</td>
+      <td class="l"><span class="st ${c}">${esc(t)}</span><div class="sm-only mut sub">${o.status === 'ouvert' ? 'âge ' + age : age}</div></td><td>${o.qty ? nf(o.filled_qty / o.qty * 100, 0) + ' %' : '—'}</td><td>${px(o.limit_px)}</td><td class="hm">${eur(o.qty * o.limit_px)}</td>
+      <td class="hm">${age}</td><td class="g hm">Achat limite</td></tr>`; }).join('')
     || `<tr><td colspan="8" class="mut">aucun ordre fictif</td></tr>`);
   $('ordNote').textContent = 'Statut constaté au dernier cycle (pas de suivi en direct entre deux cycles) ; remplissages reconstruits après coup à partir des transactions publiques. Âge = depuis la création, ordres ouverts seulement. Montant = quantité demandée × prix limite, hors frais ; Rempli = part exécutée. Raison d\'un rejet : non publiée. BTC réf. = carnet de référence « achat et conservation », pas Ultra.';
 }
@@ -205,10 +206,10 @@ function renderPos(X) {
   const rows = Object.entries(p.carnets).flatMap(([b, c]) => c.positions.filter(x => x.status === 'ouverte').map(x => ({b, ...x})));
   $('posCnt').textContent = `(${rows.length})`;
   const mk = (b, m) => ui && ui[b] ? (ui[b].positions_ouvertes || []).find(q => q.market === m) : null;
-  $('pos').innerHTML = `<tr><th>Symbole</th><th class="l">Carnet</th><th>Entrée</th><th>Marquage</th><th>P&amp;L net</th><th class="hm">P&amp;L %</th><th class="hm">Statut</th></tr>` +
+  $('pos').innerHTML = `<tr><th>Symbole</th><th class="l hm">Carnet</th><th>Entrée</th><th>Marquage</th><th>P&amp;L net</th><th class="hm">P&amp;L %</th><th class="hm">Statut</th></tr>` +
     (rows.map(x => { const q = mk(x.b, x.market);
       const mp = q ? (ok(q.marquage.prix) ? `${px(q.marquage.prix)}<div class="mut" style="font-size:9.5px">${q.marquage.source === 'bougie_1h_close' ? 'clôture 1 h' : 'ticker'} ${hm(q.marquage.ts)}</div>` : ABS('prix absent')) : ABS('non publié');
-      return `<tr><td><span class="sym">${coin(x.market)}${esc(base(x.market))}</span>${x.label ? `<div class="mut" style="font-size:9.5px">${esc(x.label)}</div>` : ''}</td><td class="l">${book(x.b)}</td><td>${px(x.entry_px)}<div class="mut" style="font-size:9.5px">${dhm(x.entry_ts)}</div></td><td>${mp}</td>
+      return `<tr><td><span class="sym">${coin(x.market)}${esc(base(x.market))}</span><div class="sm-only">${book(x.b)}</div>${x.label ? `<div class="mut sub">${esc(x.label)}</div>` : ''}</td><td class="l hm">${book(x.b)}</td><td>${px(x.entry_px)}<div class="mut" style="font-size:9.5px">${dhm(x.entry_ts)}</div></td><td>${mp}</td>
         <td class="${q ? cls(q.pnl_latent_net) : ''}">${q ? (ok(q.pnl_latent_net) ? sgn(q.pnl_latent_net, v => nf(v, 2)) + ' €' : ABS('non calculable')) : ABS('non publié')}${q && ok(q.pnl_latent_net_pct) ? `<div class="sm-only" style="font-size:9.5px">${pct(q.pnl_latent_net_pct)}</div>` : ''}</td>
         <td class="hm ${q ? cls(q.pnl_latent_net_pct) : ''}">${q && ok(q.pnl_latent_net_pct) ? pct(q.pnl_latent_net_pct) : '—'}</td><td class="hm"><span class="st okk">Ouverte</span></td></tr>`; }).join('')
     || `<tr><td colspan="7" class="mut">aucune position ouverte</td></tr>`);
