@@ -3,151 +3,78 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#07090c">
+<meta name="theme-color" content="#03040a">
 <meta name="robots" content="noindex,nofollow">
-<title>MEME AUTONOME — tableau de bord public (simulation)</title>
-<style>
-:root{--bg:#07090c;--card:#10141a;--card2:#151a22;--line:#222a35;--txt:#e9eef5;--mut:#8b96a5;--g:#22f08a;--r:#ff4d5e;--a:#ffb020;--v:#a78bfa}
-*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--txt);font:14px/1.45 -apple-system,Segoe UI,Roboto,Inter,sans-serif}
-.wrap{max-width:1180px;margin:0 auto;padding:14px 12px 40px}
-header{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:10px}h1{font-size:19px;letter-spacing:.08em;margin:0;font-weight:800}
-.tag{font-size:11px;font-weight:700;letter-spacing:.06em;padding:3px 8px;border-radius:999px;border:1px solid var(--line);color:var(--mut)}.tag.a{color:var(--a);border-color:#5a4512}
-.banner{border:1px dashed #3a4656;border-radius:12px;padding:10px 12px;font-size:12.5px;color:var(--mut);margin-bottom:12px}
-.grid{display:grid;gap:12px;grid-template-columns:1fr}@media(min-width:900px){.grid{grid-template-columns:1fr 1fr}.span2{grid-column:1/3}}.grid>*{min-width:0}
-.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px}
-.card h2{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--mut);margin:0 0 10px}
-.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}@media(min-width:600px){.stats{grid-template-columns:repeat(4,1fr)}}
-.stat{background:var(--card2);border-radius:10px;padding:9px 10px}.stat span{font-size:11px;color:var(--mut)}.stat b{display:block;font-size:17px}
-.g{color:var(--g)}.r{color:var(--r)}.a{color:var(--a)}.mut{color:var(--mut)}.small{font-size:11.5px}
-table{width:100%;border-collapse:collapse;font-size:12.5px}th,td{padding:7px 6px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
-th{color:var(--mut);font-weight:600;font-size:11px;text-transform:uppercase}th:first-child,td:first-child,td.l,th.l{text-align:left}td.l{white-space:normal}
-.scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}.chip{display:inline-block;font-size:11.5px;padding:2px 7px;border-radius:6px;background:var(--card2);border:1px solid var(--line);margin:1px}
-.chip.n{border-color:#1d4a33;color:var(--g)}.note{font-size:12px;color:var(--mut);margin-top:8px}.ev{font-size:12px;font-family:ui-monospace,Menlo,monospace;color:var(--mut);border-bottom:1px solid var(--line);padding:4px 0}
-
-.bdg{font-size:10px;font-weight:800;letter-spacing:.06em;padding:2px 7px;border-radius:6px;margin-left:6px;vertical-align:middle}
-.bdg.p{background:#0f3324;color:var(--g)}.bdg.rp{background:#2d2140;color:var(--v)}.bdg.bt{background:#3a2a0c;color:var(--a)}
-.vd{font-weight:700}.vd.selectionner{color:var(--g)}.vd.surveiller{color:var(--a)}.vd.rejeter{color:var(--r)}.vd.non_evaluable{color:var(--mut)}
-svg.eq{width:100%;height:150px;background:var(--card2);border-radius:10px}
-select{background:var(--card2);color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:5px}
-.banner.lim{border-color:#ffb020}.banner.wait{border-color:#5aa9ff}
-</style>
+<title>MEME AUTONOME — simulation (argent fictif)</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 48 40%22%3E%3Cpath d=%22M3 6 L12 6 L20 32 L13 36 Z%22 fill=%22%2322f08a%22/%3E%3Cpath d=%22M27 34 L37 4 L45 4 L34 36 Z%22 fill=%22%2322f08a%22/%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/galaxy.css">
+<link rel="preload" as="image" href="assets/scan.webp">
 </head>
-<body><div class="wrap">
-<header><h1>MEME AUTONOME</h1><span class="tag">BITVAVO EUR</span><span class="tag">SPOT · LONG</span><span class="tag a">SIMULATION</span><span class="tag" id="fresh">…</span></header>
-<div class="banner">Recherche / simulation uniquement — aucun ordre réel, aucun argent, aucun conseil. Données publiques Bitvavo. Mis à jour par un cycle automatique toutes les 2 h (évaluation S3 toutes les 4 h). Les règles sont gelées ; ce site n'affiche que leurs sorties.</div>
-<div class="banner lim" id="limites"><b>Limites de la simulation (permanent)</b> — argent fictif (carnets de 1 000 € imaginaires, aucun ordre réel) ; cadence de 2 h : le carnet n'est observé qu'à chaque cycle, les remplissages et les stops entre deux cycles sont <b>reconstruits après coup</b> à partir des transactions publiques (ce qui manque est marqué « incertain », rien n'est inventé) ; les cycles GitHub peuvent être retardés ou sautés (affichés comme trous) ; <b>aucun avantage n'est démontré</b> : les tableaux restent « données insuffisantes » tant que n est petit.</div>
-<div class="banner wait" id="attente" style="display:none"><b>En attente du premier cycle GitHub.</b> Ce site vient d'être mis en ligne : aucun chiffre n'est encore disponible. Le premier cycle automatique écrira ici ses propres données ; l'enregistrement prospectif (carnets paper inclus) commence à ce cycle-là.</div>
-<div class="grid">
- <section class="card span2"><h2>État du système</h2><div id="status"></div></section>
- <section class="card span2"><h2>Ultra v1.0 — coordinateur & analyses croisées <span class="bdg p">PROSPECTIF</span></h2><div id="u10"></div></section>
- <section class="card span2"><h2>Paper 2 h — carnets fictifs 1 000 € <span class="bdg p">PROSPECTIF</span></h2><div id="p10"></div></section>
- <section class="card span2"><h2>Ultra vs S3 · S2 · liquidité · v1 · BTC — banc d'évaluation <span class="bdg p">PROSPECTIF</span></h2><div id="h10"></div></section>
- <section class="card span2"><h2>Dernière évaluation & historique des signaux</h2><div class="note" id="evhead"></div><div id="last"></div>
-   <div class="scroll"><table id="hist"></table></div></section>
- <section class="card span2"><h2>Comparaison prospective S3 · S2 · rang liquidité · v1 · BTC</h2><div class="note" id="cmpnote"></div><div class="scroll"><table id="cmp"></table></div></section>
- <section class="card"><h2>Détection large (tous les marchés EUR)</h2><div id="wide"></div></section>
- <section class="card"><h2>Ultra A/B (ombre, sans effet sur S3)</h2><div id="ultra"></div></section>
- <section class="card"><h2>Moteur étape B en ombre <span class="bdg rp">REPLAY / VÉRIF.</span></h2><div id="shadow"></div></section>
- <section class="card"><h2>Cycles récents & trous de données</h2><div id="runs"></div></section>
+<body>
+<canvas id="sky" aria-hidden="true"></canvas>
+<div class="app">
+ <header class="top">
+  <div class="brand"><svg class="logo" viewBox="0 0 48 40" aria-hidden="true"><defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#b6ffd9"/><stop offset="1" stop-color="#19e07a"/></linearGradient></defs><path d="M3 6 L12 6 L20 32 L13 36 Z" fill="url(#lg)"/><path d="M27 34 L37 4 L45 4 L34 36 Z" fill="url(#lg)"/></svg><h1>MEME AUTONOME</h1></div>
+  <div class="hright"><span class="pill sim">SIMULATION · ARGENT FICTIF</span><span class="pill" id="fresh">…</span><span class="clock" id="clock">--:--</span></div>
+ </header>
+
+ <main class="grid">
+  <section class="card cap" id="cardCap">
+   <div class="ch"><span class="ic g">◎</span>CAPITAL FICTIF ULTRA <span class="sub">net après frais</span></div>
+   <div class="capv" id="capV">—</div>
+   <div class="capd" id="capD"></div>
+   <div class="eq" id="eq"></div>
+   <div class="tabs" id="eqTabs"><button data-w="1">1H</button><button data-w="4">4H</button><button data-w="24" class="on">1D</button><button data-w="168">1W</button></div>
+   <div class="note" id="capNote"></div>
+  </section>
+
+  <section class="card kpi" id="kpi"></section>
+
+  <section class="card next">
+   <div class="nx"><svg viewBox="0 0 40 40" class="nxic" aria-hidden="true"><circle cx="20" cy="22" r="14" fill="none" stroke="#22f08a" stroke-width="3"/><path d="M20 22 L20 13 M20 22 L27 26" stroke="#22f08a" stroke-width="3" stroke-linecap="round"/><path d="M15 4 h10" stroke="#22f08a" stroke-width="3" stroke-linecap="round"/></svg>
+   <div><div class="ch2">PROCHAIN CYCLE</div><div class="cd" id="cd">--:--:--</div></div></div>
+   <div class="note" id="nxNote"></div>
+  </section>
+
+  <section class="card mkt">
+   <div class="ch"><span class="ic g">◉</span>MARCHÉS SCANNÉS <span class="cnt" id="mktCnt"></span></div>
+   <div class="tabs" id="mktTabs"><button data-k="TOUS" class="on">TOUS</button><button data-k="S3">S3</button><button data-k="S2">S2</button><button data-k="S1_liquidite">S1</button></div>
+   <div id="mkt"></div>
+  </section>
+
+  <section class="scene" id="scene" aria-label="Rejeu animé du dernier cycle enregistré">
+   <canvas id="gal"></canvas>
+   <div id="nodes"></div>
+   <div class="core"><svg viewBox="0 0 48 40" aria-hidden="true"><path d="M3 6 L12 6 L20 32 L13 36 Z" fill="#fff6c8"/><path d="M27 34 L37 4 L45 4 L34 36 Z" fill="#fff6c8"/></svg></div>
+   <div class="replay" id="replay">…</div>
+  </section>
+
+  <section class="card opp">
+   <div class="ch"><span class="ic g">◎</span>TOP OPPORTUNITÉS <span class="sub">Ultra, dernier cycle</span></div>
+   <div id="opp"></div>
+  </section>
+
+  <section class="card ord">
+   <div class="ch"><span class="ic g">▤</span>ORDRES FICTIFS OUVERTS <span class="cnt" id="ordCnt"></span></div>
+   <div class="scroll"><table id="ord"></table></div><div class="note" id="ordNote"></div>
+  </section>
+
+  <section class="card pos">
+   <div class="ch"><span class="ic g">▣</span>POSITIONS FICTIVES EN COURS <span class="cnt" id="posCnt"></span></div>
+   <div class="scroll"><table id="pos"></table></div><div class="note" id="posNote"></div>
+  </section>
+
+  <section class="card ev">
+   <div class="ch"><span class="ic g">◷</span>DERNIERS ÉVÉNEMENTS <select id="evF" aria-label="filtre"><option value="all">TOUS</option><option value="ultra">ULTRA</option><option value="ref">RÉFÉRENCES</option></select></div>
+   <div id="ev"></div>
+  </section>
+ </main>
+
+ <footer class="disc">
+  <p><b>Recherche / simulation uniquement</b> — argent fictif (carnets de 1 000 € imaginaires), aucun ordre réel, aucun argent, aucun conseil. Données publiques Bitvavo. Cycle automatique GitHub toutes les 2 h : le carnet n'est observé qu'à chaque cycle ; remplissages et stops entre deux cycles <b>reconstruits après coup</b> (ce qui manque est marqué « incertain »). Les cycles peuvent être retardés ou sautés. <b>Aucun avantage n'est démontré</b> : n insuffisant tant qu'il y a moins de 30 trades clos.</p>
+  <p>Les animations rejouent le <b>dernier cycle enregistré</b> ; elles ne montrent aucune activité en direct entre deux cycles. Heures en Europe/Paris. <a href="v1-classic/">Version classique (détails complets)</a></p>
+ </footer>
 </div>
-<div class="note" id="foot"></div>
-</div>
-<script>
-const $=id=>document.getElementById(id);
-const P=x=>x==null?'—':(x*100).toFixed(2)+' %';const N=(x,d=0)=>x==null?'—':Number(x).toLocaleString('fr-FR',{maximumFractionDigits:d});
-const T=ms=>ms?new Date(ms).toLocaleString('fr-FR',{timeZone:'Europe/Paris',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'—';
-const cls=v=>v==null?'':v>0?'g':v<0?'r':'';const age=s=>s==null?'—':s<5400?Math.round(s/60)+' min':(s/3600).toFixed(1)+' h';
-async function J(f){const r=await fetch('data/'+f+'.json?'+Date.now(),{cache:'no-store'});if(!r.ok)throw new Error(f+' '+r.status);return r.json()}
-const WAIT='<div class="mut">en attente du premier cycle GitHub — aucune donnée</div>';
-let WAITING=false;
-async function load(){
- const st0=await J0('status');
- if(!st0){WAITING=true;$('attente').style.display='';$('fresh').textContent='en attente du premier cycle';
-  ['status','u10','p10','h10','last','wide','ultra','shadow','runs'].forEach(i=>$(i).innerHTML=WAIT);['evhead','cmpnote'].forEach(i=>$(i).textContent='');$('hist').innerHTML='';$('cmp').innerHTML='';return}
- WAITING=false;$('attente').style.display='none';
- try{
- const [st,sg,cp,wd,ul,sh]=await Promise.all(['status','signals','compare','wide','ultra','shadow'].map(J));
- const lr=st.derniers_cycles[0]||{};const gen_age=(Date.now()-st.genere)/1000;
- $('fresh').textContent='données : '+age(gen_age);$('fresh').className='tag '+(gen_age<3*3600?'g':'r');
- $('status').innerHTML=`<div class="stats">
-  <div class="stat"><span>Dernier cycle</span><b>${T(lr.debut)}</b></div><div class="stat"><span>Durée du cycle</span><b>${N(lr.duree_s,1)} s</b></div>
-  <div class="stat"><span>Âge bougie close BTC au cycle</span><b>${age((lr.fraicheur||{}).age_bougie_s)}</b></div><div class="stat"><span>Erreurs au dernier cycle</span><b class="${(lr.erreurs||[]).length?'r':'g'}">${(lr.erreurs||[]).length}</b></div>
-  <div class="stat"><span>Évaluations</span><b>${N(cp.n_evaluations)}</b></div><div class="stat"><span>Cycles journalisés</span><b>${st.derniers_cycles.length}</b></div>
-  <div class="stat"><span>Trous journalisés</span><b>${st.trous.length}</b></div><div class="stat"><span>Site généré</span><b>${T(st.genere)}</b></div></div>
-  <div class="note">${st.frequence} · ${st.source}. Si « données » dépasse 3 h, un cycle a été retardé ou sauté (GitHub ne garantit pas l'heure).</div>`;
- const e=sg.evaluations[0];
- if(e){$('evhead').textContent=`Bougie ouverte ${T(e.t)} (Paris) · calculée ${T(e.calcul)} · statut ${e.statut} · régime BTC ${e.regime||'—'} · ${e.n_marches} marchés, ${e.n_eligibles} éligibles · raisons S3 : `+Object.entries(e.raisons_S3).map(([k,v])=>k+' '+v).join(', ');
-  const ch=a=>a.length?a.map(x=>`<span class="chip ${x.nouveau?'n':''}">${x.market}</span>`).join(''):'<span class="mut">abstention</span>';
-  $('last').innerHTML=['S3','S2','S1_liquidite','v1_S0'].map(k=>`<div style="margin:4px 0"><b>${k.replace('_',' ')}</b> ${ch(e.selections[k])}</div>`).join('')+'<div class="note">Vert = nouvelle sélection par rapport à l\'évaluation précédente.</div>';}
- else $('last').innerHTML='<div class="mut">Aucune évaluation encore.</div>';
- const hz=sg.horizons;
- $('hist').innerHTML='<tr><th>Bougie</th><th>Statut</th><th class="l">S3</th>'+hz.map(h=>`<th>${h} brut / excès</th>`).join('')+'</tr>'+
-  sg.evaluations.slice(0,40).flatMap(e=>(e.selections.S3.length?e.selections.S3:[{market:'(abstention)',suite:{}}]).map(s=>`<tr><td>${T(e.t)}</td><td>${e.statut}</td><td class="l">${s.market}${s.nouveau?' <span class="g small">nouv.</span>':''}</td>${hz.map(h=>{const o=(s.suite||{})[h];return o?`<td class="${cls(o.excess)}">${P(o.ret)} / ${P(o.excess)}</td>`:'<td class="mut">en attente</td>'}).join('')}</tr>`)).join('');
- $('cmpnote').textContent=cp.note;
- $('cmp').innerHTML='<tr><th>Sélecteur</th>'+hz.map(h=>`<th>${h} n · excès · hit</th>`).join('')+'</tr>'+['S3','S2','S1_liquidite','v1_S0'].map(k=>`<tr><td>${k.replace('_',' ')}</td>${hz.map(h=>{const c=cp.selecteurs[k][h];return `<td><span class="mut">${c.n}</span> · <span class="${cls(c.exces_moyen)}">${P(c.exces_moyen)}</span> · ${c.hit==null?'—':P(c.hit)}</td>`}).join('')}</tr>`).join('')+
-  `<tr><td>BTC-hold (brut)</td>${hz.map(h=>{const c=cp.selecteurs.BTC_hold[h];return `<td><span class="mut">${c.n}</span> · ${P(c.brut_moyen)}</td>`}).join('')}</tr>`;
- const w=wd.instantanes[0];
- $('wide').innerHTML=w?`<div class="stats"><div class="stat"><span>Marchés EUR</span><b>${w.n_eur}</b></div><div class="stat"><span>Exclus</span><b>${w.n_excluded}</b></div></div>
-  <div class="note">${T(w.ts)} · ${wd.exclusions.map(x=>x.k+' '+x.n).join(' · ')}</div><div class="scroll"><table><tr><th>Plus fortes hausses 24 h</th><th>Var.</th><th>Vol. €</th><th>Spread</th></tr>
-  ${wd.top_hausse_24h.slice(0,10).map(m=>`<tr><td>${m.market}</td><td class="${cls(m.last/m.open-1)}">${P(m.last/m.open-1)}</td><td>${N(m.volume_quote)}</td><td>${P(m.spread)}</td></tr>`).join('')}</table></div>`:'<div class="mut">pas encore d\'instantané</div>';
- const lastA=ul.journal.filter(j=>j.fn==='A').reduce((m,j)=>Math.max(m,j.ts),0), lastB=ul.journal.filter(j=>j.fn==='B').reduce((m,j)=>Math.max(m,j.ts),0);
- const sumA=ul.journal.find(j=>j.fn==='A'&&j.market==='*resume*'&&j.ts===lastA), cands=sumA?sumA.observations.candidats:[];
- const A=ul.journal.filter(j=>j.fn==='A'&&j.market!=='*resume*'&&j.ts===lastA).sort((a,b)=>(cands.includes(b.market)-cands.includes(a.market))||(b.observations.z24-a.observations.z24)).slice(0,8);
- const B=ul.journal.filter(j=>j.fn==='B'&&j.ts===lastB);
- $('ultra').innerHTML=`<div class="note">${ul.note} Dernière passe : ${lastA?T(lastA):'—'}${sumA?' · '+sumA.observations.n_retenus+' marchés retenus':''}.</div><div class="scroll"><table><tr><th>A : à surveiller</th><th>z 24 h</th><th>Var. 24 h</th><th>Vol. €</th></tr>${A.map(a=>`<tr><td>${a.market}${cands.includes(a.market)?' <span class="g">candidat</span>':''}</td><td>${N(a.observations.z24,1)}</td><td>${P(a.observations.chg24)}</td><td>${N(a.observations.vq)}</td></tr>`).join('')||'<tr><td colspan=4 class="mut">aucun</td></tr>'}</table></div>
-  <div class="scroll"><table><tr><th>B : candidat (4 h)</th><th>Trades</th><th>Part achat</th><th>Delta €</th><th>POC</th><th>Zone de valeur 70 %</th></tr>${B.map(b=>{const o=b.observations;return `<tr><td>${b.market}</td><td>${N(o.n)}</td><td>${P(o.buy_share)}</td><td class="${cls(o.delta)}">${N(o.delta)}</td><td>${N(o.poc,6)}</td><td>${N(o.val,6)} – ${N(o.vah,6)}</td></tr>`}).join('')||'<tr><td colspan=6 class="mut">aucun</td></tr>'}</table></div>
-  ${B.length?'<div class="note small">Incertitude B : '+B[0].uncertainty+'</div>':''}`;
- $('shadow').innerHTML=`<div class="note">${sh.note}</div><div>${sh.ordres.map(o=>`<span class="chip">${o.mode} · ${o.status} × ${o.n}</span>`).join('')||'<span class="mut">aucun ordre ombre (aucune nouvelle sélection S3 évaluée à temps)</span>'}</div>
-  <div class="scroll"><table><tr><th>Position</th><th>Statut</th><th>Entrée</th><th>Sortie</th><th>PnL net</th></tr>${sh.positions.map(p=>`<tr><td>${p.market}</td><td>${p.status}</td><td>${N(p.entry_px,6)}</td><td>${p.exit_px?N(p.exit_px,6)+' '+p.reason:'—'}</td><td class="${cls(p.pnl)}">${p.pnl==null?'—':N(p.pnl,3)+' €'}</td></tr>`).join('')}</table></div>`;
- $('runs').innerHTML=st.derniers_cycles.slice(0,10).map(r=>`<div class="ev">${T(r.debut)} · ${N(r.duree_s,1)} s · ${r.evaluations.map(x=>(x.rattrapage?'rattrapage ':'éval ')+T(x.t)).join(', ')||'pas d\'éval due'} · API ${r.appels_api}${r.erreurs.length?' · <span class="r">erreurs : '+r.erreurs.join(', ')+'</span>':''}${r.restauration?' · état restauré':''}</div>`).join('')+
-  '<div class="note">Trous journalisés (par type) :</div>'+(Object.entries(st.trous.reduce((m,g)=>{const k=g.component+' · '+g.kind;(m[k]=m[k]||{n:0,ts:0,ex:[]}).n++;m[k].ts=Math.max(m[k].ts,g.ts);if(g.market&&m[k].ex.length<4)m[k].ex.push(g.market);return m},{})).map(([k,v])=>`<div class="ev">${k} × ${v.n} · dernier ${T(v.ts)}${v.ex.length?' · ex. '+v.ex.join(', '):''}</div>`).join('')||'<div class="ev">aucun</div>');
- $('foot').textContent='Heures en Europe/Paris. Site statique en lecture seule.';
- }catch(err){$('foot').textContent='Erreur de chargement : '+err}
-}
-async function J0(f){try{return await J(f)}catch(e){return null}}
-function eqsvg(books){const cols={'ultra-1.0':'#22f08a','S3':'#a78bfa','S2':'#5aa9ff','btc_hold':'#ffb020'};const pts=Object.values(books).flatMap(b=>b.courbe);
- if(pts.length<2)return '<div class="mut small">Courbe : pas encore assez de points.</div>';
- const t0=Math.min(...pts.map(p=>p.ts)),t1=Math.max(...pts.map(p=>p.ts)),v0=Math.min(...pts.map(p=>p.equity),990),v1=Math.max(...pts.map(p=>p.equity),1010);
- const X=t=>10+(t-t0)/((t1-t0)||1)*580,Y=v=>140-(v-v0)/((v1-v0)||1)*130;
- return `<svg class="eq" viewBox="0 0 600 150" preserveAspectRatio="none"><line x1="10" x2="590" y1="${Y(1000)}" y2="${Y(1000)}" stroke="#3a4656" stroke-dasharray="4"/>`+
-  Object.entries(books).map(([k,b])=>`<polyline fill="none" stroke="${cols[k]}" stroke-width="2" points="${b.courbe.map(p=>X(p.ts)+','+Y(p.equity)).join(' ')}"/>`).join('')+
-  `</svg><div class="small">${Object.keys(books).map(k=>`<span style="color:${cols[k]}">■</span> ${k}`).join(' · ')} · pointillé = 1 000 € · échelle ${N(v0,0)}–${N(v1,0)} €</div>`}
-async function load10(){
- const [u,p,h]=await Promise.all(['ultra10','paper10','harness10'].map(J0));
- if(u){const c=u.cycles[0];const J=u.journal;const by={};J.forEach(r=>{(by[r.market]=by[r.market]||{})[r.fn]=r});
-  const coord=(by['*cycle*']||{})['U-COORD'];const co=coord?coord.obs:{};
-  $('u10').innerHTML=c?`<div class="stats"><div class="stat"><span>Dernière passe</span><b>${T(c.ts)}</b></div><div class="stat"><span>Anomalies A</span><b>${c.n_anomalies}</b></div>
-   <div class="stat"><span>Analysés en profondeur</span><b>${c.n_deep}</b></div><div class="stat"><span>Sélectionnés</span><b class="${c.selected.length?'g':''}">${c.selected.length}</b></div>
-   <div class="stat"><span>Appels API (poids)</span><b>${c.api_calls} (${c.api_weight})</b></div><div class="stat"><span>Durée</span><b>${N(c.runtime_s,1)} s</b></div>
-   <div class="stat"><span>Vérifications complémentaires</span><b>${c.detail.followups}</b></div><div class="stat"><span>Régime BTC</span><b>${c.detail.regime||'—'}</b></div></div>
-   <div class="note">${u.note} Budget : ${c.detail.budget_why}. Sélection : ${c.selected.join(', ')||'<b>aucune</b>'} · surveillés : ${c.watched.join(', ')||'—'}.</div>
-   <div class="scroll"><table><tr><th>Marché</th><th>A z24/var</th><th>C spread/impact 1 k€</th><th>B part achat/delta</th><th>D statut/news</th><th class="l">E objections</th><th class="l">F verdict & raison</th></tr>
-   ${Object.entries(by).filter(([m])=>m!=='*cycle*').map(([m,f])=>{const a=(f['U-A']||{}).obs||{},cc=f['U-C']||{},b=f['U-B']||{},d=f['U-D'],e=(f['U-E']||{}).obs||{},F=f['U-F']||{};
-    return `<tr><td>${m}</td><td>${N(a.z24,1)} / ${P(a.chg24)}</td><td>${cc.verdict==='non_evaluable'?'<span class="mut">non évaluable</span>':P((cc.obs||{}).spread)+' / '+P((cc.obs||{}).impact)}</td>
-     <td>${b.verdict==='non_evaluable'?'<span class="mut">non évaluable</span>':P((b.obs||{}).buy_share)+' / '+N((b.obs||{}).delta)+' € <span class="'+(b.verdict==='confirme'?'g':'a')+'">'+b.verdict+'</span>'}${(b.obs||{}).suivi_12h?' · 12 h : '+((b.obs.suivi_12h.confirme)?'<span class="g">confirmé</span>':'<span class="a">non</span>'):''}</td>
-     <td>${d?((d.obs.depot||'?')+'/'+(d.obs.retrait||'?')+' · '+(d.obs.n_mentions||0)+' titre(s)'):'<span class="mut">non appelé</span>'}</td>
-     <td class="l small">${(e.objections||[]).join(' ; ')||'—'}${(e.observations||[]).length?' <span class="mut">('+e.observations.join(' ; ')+')</span>':''}</td>
-     <td class="l small"><span class="vd ${F.verdict}">${F.verdict||'—'}</span> ${F.incertitude||''}</td></tr>`}).join('')}</table></div>
-   <div class="note">Historique : ${u.cycles.slice(0,8).map(x=>T(x.ts)+' → '+(x.selected.join(', ')||'aucune')).join(' · ')}</div>`:'<div class="mut">pas encore de passe</div>'}
- if(p){const B=p.carnets;
-  $('p10').innerHTML=`<div class="note">${p.note}</div>${eqsvg(B)}<div class="scroll"><table><tr><th>Carnet</th><th>Départ</th><th>Équité</th><th>Net</th><th>Frais</th><th>Positions ouvertes</th><th>Trades clos</th></tr>
-   ${Object.entries(B).map(([k,b])=>{const l=b.courbe[b.courbe.length-1]||{};const cl=b.positions.filter(x=>x.status==='fermee');return `<tr><td>${k}</td><td>${T(b.depart)}</td><td>${N(l.equity,2)} €</td><td class="${cls(l.equity-1000)}">${l.equity?N(l.equity-1000,2)+' €':'—'}</td><td>${N(l.fees_cum,2)} €</td><td>${l.n_open??'—'}</td><td>${cl.length}</td></tr>`}).join('')}</table></div>
-   <div class="scroll"><table><tr><th>Carnet</th><th>Marché</th><th>Statut</th><th>Entrée</th><th>Stop</th><th>Sortie</th><th>PnL net</th><th class="l">Étiquette</th></tr>
-   ${Object.entries(B).flatMap(([k,b])=>b.positions.map(x=>`<tr><td>${k}</td><td>${x.market}</td><td>${x.status}</td><td>${N(x.entry_px,6)}<div class="mut small">${T(x.entry_ts)}</div></td><td>${N(x.sl,6)}</td><td>${x.exit_px?N(x.exit_px,6)+' '+x.reason:'—'}</td><td class="${cls(x.pnl)}">${x.pnl==null?'—':N(x.pnl,3)+' €'}</td><td class="l small">${x.label||''}</td></tr>`)).join('')||'<tr><td colspan=8 class="mut">aucune position</td></tr>'}</table></div>
-   <div class="scroll"><table><tr><th>Carnet</th><th>Ordre</th><th>Statut</th><th>Limite</th><th>Rempli</th><th>Âge du signal</th></tr>
-   ${Object.entries(B).flatMap(([k,b])=>b.ordres.slice(0,6).map(o=>`<tr><td>${k}</td><td>${o.market} <span class="mut small">${T(o.created_ts)}</span></td><td>${o.status}</td><td>${N(o.limit_px,6)}</td><td>${o.qty?P(o.filled_qty/o.qty):'—'}</td><td>${age(o.signal_age_s)}</td></tr>`)).join('')}</table></div>
-   <div class="note">Cycles : ${p.cycles.slice(0,12).map(c=>T(c.ts)+(c.gap_h>2.5?' <span class="r">(trou '+N(c.gap_h,1)+' h)</span>':'')).join(' · ')}</div>
-   <div class="note">Événements : ${p.evenements.slice(0,10).map(e=>`${T(e.ts)} ${e.book} ${e.kind} ${e.market||''}`).join(' · ')}</div>`}
- if(h){const S=h.selection||{};const hz=['1h','4h','1d','7d'];
-  $('h10').innerHTML=`<div class="note">${h.note||''} ${h.badge||''}</div><div class="scroll"><table><tr><th>Sélecteur</th>${hz.map(x=>`<th>${x} : n · excès · hit</th>`).join('')}</tr>
-   ${Object.entries(S).map(([k,v])=>`<tr><td>${k}</td>${hz.map(x=>{const c=v[x]||{};return `<td>${c.n} · <span class="${cls(c.exces_moyen)}">${P(c.exces_moyen)}</span> · ${P(c.hit)}</td>`}).join('')}</tr>`).join('')}</table></div>
-   <div class="scroll"><table><tr><th>Ablation (Ultra 4 h)</th><th>Sélections</th><th>n mesurés</th><th>Excès moyen</th><th class="l">Verdict</th></tr>
-   ${Object.entries(h.ablation||{}).map(([k,v])=>`<tr><td>${k}</td><td>${v.n_selections}</td><td>${v['4h'].n}</td><td>${P(v['4h'].exces_moyen)}</td><td class="l small">${v['4h'].verdict}</td></tr>`).join('')}</table></div>
-   <div class="scroll"><table><tr><th>Carnet paper</th><th>Net</th><th>Frais</th><th>Max baisse</th><th>Trades</th><th>Sans meilleur trade</th><th class="l">Verdict</th></tr>
-   ${Object.entries(h.paper||{}).map(([k,v])=>`<tr><td>${k}</td><td class="${cls(v.rendement_net)}">${P(v.rendement_net)}</td><td>${N(v.frais,2)} €</td><td>${P(v.max_baisse)}</td><td>${v.n_trades}</td><td>${v.sans_meilleur_trade==null?'—':N(v.sans_meilleur_trade,2)+' €'}</td><td class="l small">${v.verdict}</td></tr>`).join('')}</table></div>
-   <div class="note"><span class="bdg bt">BACKTEST</span> aucun backtest n'est affiché sur ce site ; les rejeux sont marqués <span class="bdg rp">REPLAY</span>.</div>`}
-}
-async function all(){await load();if(!WAITING)load10()}
-all();setInterval(all,300000);
-</script>
-</body></html>
+<script src="assets/galaxy.js"></script>
+</body>
+</html>
