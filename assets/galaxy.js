@@ -27,7 +27,7 @@ const STEPS = [
   {k: 'SÉLECTION', c: '#22f08a', img: 'selection'}, {k: 'EXÉCUTION', c: '#ff4d5e', img: 'execution'}, {k: 'SUIVI', c: '#e9f2ff', img: 'suivi'}];
 // positions dans la scène (ordre du pipeline, sens horaire) : [x%, y%] large / carré (mobile)
 const POS_W = [[17, 33], [48, 21], [80, 33], [83, 68], [56, 78], [24, 70]];
-const POS_S = [[19, 26], [50, 14], [81, 26], [81, 59], [50, 72], [19, 59]];
+const POS_S = [[19, 29], [50, 18], [81, 29], [81, 60], [50, 73], [19, 60]];
 
 let D = {}, eqWin = 24, mktTab = 'TOUS', evFilter = 'all';
 
@@ -89,7 +89,7 @@ function renderCap(X) {
   }
   const l = ub.courbe[ub.courbe.length - 1], net = l.equity - CAPITAL;
   $('capV').textContent = nf(l.equity, 2) + ' €';
-  $('capD').innerHTML = `<span class="${cls(net)}">${pct(net / CAPITAL)}</span> &nbsp; <span class="${cls(net)}">${sgn(net, v => nf(v, 2))} €</span> <span class="mut">vs 1 000 € fictifs</span>`;
+  $('capD').innerHTML = `<span class="${cls(net)}">${pct(net / CAPITAL, 3)}</span> &nbsp; <span class="${cls(net)}">${sgn(net, v => nf(v, 2))} €</span> <span class="mut">vs 1 000 € fictifs</span>`;
   const pts = ub.courbe.filter(q => q.ts >= l.ts - eqWin * H);
   if (pts.length < 2) {
     $('eq').innerHTML = `<svg viewBox="0 0 300 110" preserveAspectRatio="none"><line x1="0" x2="300" y1="55" y2="55" stroke="#3a4656" stroke-dasharray="4"/><circle cx="296" cy="55" r="4" fill="#22f08a"/></svg>
@@ -124,7 +124,8 @@ function renderKPI(X) {
   const fees = st && ok(st.frais_totaux) ? st.frais_totaux : ub && ub.courbe.length ? ub.courbe[ub.courbe.length - 1].fees_cum : null;
   h += k('Frais', ok(fees) ? `<b>${nf(fees, 2)} €</b>` : `<b class="abs">donnée absente</b>`, 'payés (fictifs), carnet Ultra');
   let dd = st ? st.max_baisse : curveDD(ub && ub.courbe), ddWhy = st ? reason('max_baisse') : ub ? `non significatif (${ub.courbe.length} point${ub.courbe.length > 1 ? 's' : ''})` : 'donnée absente';
-  h += k('Max drawdown', ok(dd) ? `<b class="${dd < 0 ? 'r' : ''}">${pct(dd)}</b>` : `<b class="abs">${esc(ddWhy)}</b>`, 'sur la courbe d\'équité');
+  const npts = st ? st.n_points_courbe : ub ? ub.courbe.length : 0;
+  h += k('Max drawdown', ok(dd) ? `<b class="${dd < 0 ? 'r' : ''}">${pct(dd)}</b>` : `<b class="abs">${esc(ddWhy)}</b>`, ok(dd) && npts < 12 ? `${npts} points de courbe : peu significatif` : 'sur la courbe d\'équité');
   const bt = st && st.meilleur_trade;
   h += k('Meilleur trade', bt ? `<b class="${cls(bt.pnl)}">${sgn(bt.pnl, v => nf(v, 2))} €</b>` : `<b class="abs">${esc(reason('meilleur_trade'))}</b>`, bt ? esc(bt.market) : '');
   $('kpi').innerHTML = h;
@@ -171,15 +172,18 @@ function renderOpp(X) {
   const ms = Object.entries(X.byM).filter(([m, f]) => m !== '*cycle*' && f['U-F']);
   if (!X.c0) { $('opp').innerHTML = ABS('aucune passe Ultra publiée'); return; }
   if (!ms.length) { $('opp').innerHTML = `<div class="note">Aucun marché analysé en profondeur au dernier cycle (${X.c0.n_anomalies} anomalie(s)).</div>`; return; }
-  ms.sort((a, b) => (VORD[a[1]['U-F'].verdict] ?? 9) - (VORD[b[1]['U-F'].verdict] ?? 9) || ((b[1]['U-A'] || {}).obs || {}).score - ((a[1]['U-A'] || {}).obs || {}).score);
+  const SEL = new Set(X.c0.selected), vk = ([m, f]) => f['U-F'].verdict === 'selectionner' ? (SEL.has(m) ? 0 : 0.5) : (VORD[f['U-F'].verdict] ?? 9);
+  ms.sort((a, b) => vk(a) - vk(b) || ((b[1]['U-A'] || {}).obs || {}).score - ((a[1]['U-A'] || {}).obs || {}).score);
   $('opp').innerHTML = ms.map(([m, f]) => {
-    const a = (f['U-A'] || {}).obs || {}, v = f['U-F'].verdict, e = ((f['U-E'] || {}).obs || {}).objections || [];
+    const a = (f['U-A'] || {}).obs || {}, v = f['U-F'].verdict, e = ((f['U-E'] || {}).obs || {}).objections || [], hors = v === 'selectionner' && !SEL.has(m);
     return `<div class="oc">${coin(m)}<div><div class="nm">${esc(base(m))}</div><div class="sm">z 24 h ${ok(a.z24) ? nf(a.z24, 1) : '—'} · vol. ${ok(a.vq) ? nf(a.vq, 0) + ' €' : '—'}${e.length ? ` · ${e.length} objection(s) E` : ''}</div></div>
-      <div class="rt"><div class="pc ${cls(a.chg24)}">${ok(a.chg24) ? pct(a.chg24) : '—'}</div><span class="badge ${esc(v)}">${VLBL[v] || esc(v)}</span></div></div>`;
-  }).join('') + `<div class="note">Verdicts de la synthèse F du cycle de ${hm(X.c0.ts)} (Paris). Une sélection n'est pas une recommandation ; aucun avantage démontré.</div>`;
+      <div class="rt"><div class="pc ${cls(a.chg24)}">${ok(a.chg24) ? pct(a.chg24) : '—'}</div>${hors ? '<span class="badge horssel" title="Verdict F favorable mais hors sélection finale : plafond de sélections du cycle atteint">F OK · HORS SÉL.</span>' : `<span class="badge ${esc(v)}">${VLBL[v] || esc(v)}</span>`}</div></div>`;
+  }).join('') + `<div class="note">Verdicts de la synthèse F du cycle de ${hm(X.c0.ts)} (Paris) ; « hors sél. » = verdict F favorable mais au-delà du plafond de sélections du cycle. Une sélection n'est pas une recommandation ; aucun avantage démontré.</div>`;
 }
 
-const SLBL = {ouvert: ['Ouvert', ''], rempli_taker: ['Rempli (taker)', 'okk'], rempli: ['Rempli', 'okk']};
+const SLBL = {ouvert: ['Ouvert', ''], rempli: ['Rempli (maker)', 'okk'], rempli_taker: ['Rempli (taker)', 'okk'], rejete: ['Rejeté', 'bad'],
+  partiel_puis_abandon: ['Partiel puis abandonné', 'part'], non_rempli: ['Non rempli, abandonné', 'bad']};
+const stLbl = s => SLBL[s] || [String(s).replace(/_/g, ' '), 'part'];
 function renderOrders() {
   const p = D.paper10;
   if (!p) { $('ord').innerHTML = `<tr><td>${ABS()}</td></tr>`; $('ordCnt').textContent = ''; $('ordNote').textContent = ''; return; }
@@ -187,11 +191,12 @@ function renderOrders() {
   rows.sort((a, b) => (a.status !== 'ouvert') - (b.status !== 'ouvert') || b.created_ts - a.created_ts);
   const open = rows.filter(r => r.status === 'ouvert');
   $('ordCnt').textContent = `(${open.length} ouvert${open.length > 1 ? 's' : ''})`;
-  $('ord').innerHTML = `<tr><th>Symbole</th><th class="l">Carnet</th><th>Type</th><th>Prix limite</th><th>Montant</th><th>Rempli</th><th>Statut</th><th>Âge</th></tr>` +
-    (rows.slice(0, 10).map(o => { const [t, c] = SLBL[o.status] || [o.status, '']; return `<tr><td><span class="sym">${coin(o.market)}${esc(base(o.market))}</span></td><td class="l">${book(o.b)}</td><td class="g">Achat limite</td>
-      <td>${px(o.limit_px)}</td><td>${eur(o.qty * o.limit_px)}</td><td>${o.qty ? nf(o.filled_qty / o.qty * 100, 0) + ' %' : '—'}</td><td><span class="st ${c}">${esc(t)}</span></td><td>${dur((Date.now() - o.created_ts) / 1000)}</td></tr>`; }).join('')
+  $('ord').innerHTML = `<tr><th>Symbole</th><th class="l">Carnet</th><th class="l">Statut</th><th>Rempli</th><th>Prix limite</th><th class="hm">Montant</th><th>Âge</th><th class="hm">Type</th></tr>` +
+    (rows.slice(0, 12).map(o => { const [t, c] = stLbl(o.status); return `<tr><td><span class="sym">${coin(o.market)}${esc(base(o.market))}</span></td><td class="l">${book(o.b)}</td>
+      <td class="l"><span class="st ${c}">${esc(t)}</span></td><td>${o.qty ? nf(o.filled_qty / o.qty * 100, 0) + ' %' : '—'}</td><td>${px(o.limit_px)}</td><td class="hm">${eur(o.qty * o.limit_px)}</td>
+      <td>${o.status === 'ouvert' ? dur((Date.now() - o.created_ts) / 1000) : '<span class="mut" title="ordre clos">clos</span>'}</td><td class="g hm">Achat limite</td></tr>`; }).join('')
     || `<tr><td colspan="8" class="mut">aucun ordre fictif</td></tr>`);
-  $('ordNote').textContent = 'Statut constaté au dernier cycle (pas de suivi en direct entre deux cycles). Âge = depuis la création au cycle. Montant = quantité × prix limite, hors frais. BTC réf. = carnet de référence « achat et conservation », pas Ultra.';
+  $('ordNote').textContent = 'Statut constaté au dernier cycle (pas de suivi en direct entre deux cycles) ; remplissages reconstruits après coup à partir des transactions publiques. Âge = depuis la création, ordres ouverts seulement. Montant = quantité demandée × prix limite, hors frais ; Rempli = part exécutée. Raison d\'un rejet : non publiée. BTC réf. = carnet de référence « achat et conservation », pas Ultra.';
 }
 
 function renderPos(X) {
@@ -200,12 +205,12 @@ function renderPos(X) {
   const rows = Object.entries(p.carnets).flatMap(([b, c]) => c.positions.filter(x => x.status === 'ouverte').map(x => ({b, ...x})));
   $('posCnt').textContent = `(${rows.length})`;
   const mk = (b, m) => ui && ui[b] ? (ui[b].positions_ouvertes || []).find(q => q.market === m) : null;
-  $('pos').innerHTML = `<tr><th>Symbole</th><th class="l">Carnet</th><th>Entrée</th><th>Marquage</th><th>P&amp;L net</th><th>P&amp;L %</th><th>Statut</th></tr>` +
+  $('pos').innerHTML = `<tr><th>Symbole</th><th class="l">Carnet</th><th>Entrée</th><th>Marquage</th><th>P&amp;L net</th><th class="hm">P&amp;L %</th><th class="hm">Statut</th></tr>` +
     (rows.map(x => { const q = mk(x.b, x.market);
-      const mp = q ? (ok(q.marquage.prix) ? `${px(q.marquage.prix)}<div class="mut" style="font-size:9.5px">${q.marquage.source === 'bougie_1h_close' ? 'bougie 1 h' : 'ticker'} ${hm(q.marquage.ts)}</div>` : ABS('prix absent')) : ABS('non publié');
-      return `<tr><td><span class="sym">${coin(x.market)}${esc(base(x.market))}</span></td><td class="l">${book(x.b)}</td><td>${px(x.entry_px)}<div class="mut" style="font-size:9.5px">${dhm(x.entry_ts)}</div></td><td>${mp}</td>
-        <td class="${q ? cls(q.pnl_latent_net) : ''}">${q ? (ok(q.pnl_latent_net) ? sgn(q.pnl_latent_net, v => nf(v, 2)) + ' €' : ABS('non calculable')) : ABS('non publié')}</td>
-        <td class="${q ? cls(q.pnl_latent_net_pct) : ''}">${q && ok(q.pnl_latent_net_pct) ? pct(q.pnl_latent_net_pct) : '—'}</td><td><span class="st okk">Ouverte</span></td></tr>`; }).join('')
+      const mp = q ? (ok(q.marquage.prix) ? `${px(q.marquage.prix)}<div class="mut" style="font-size:9.5px">${q.marquage.source === 'bougie_1h_close' ? 'clôture 1 h' : 'ticker'} ${hm(q.marquage.ts)}</div>` : ABS('prix absent')) : ABS('non publié');
+      return `<tr><td><span class="sym">${coin(x.market)}${esc(base(x.market))}</span>${x.label ? `<div class="mut" style="font-size:9.5px">${esc(x.label)}</div>` : ''}</td><td class="l">${book(x.b)}</td><td>${px(x.entry_px)}<div class="mut" style="font-size:9.5px">${dhm(x.entry_ts)}</div></td><td>${mp}</td>
+        <td class="${q ? cls(q.pnl_latent_net) : ''}">${q ? (ok(q.pnl_latent_net) ? sgn(q.pnl_latent_net, v => nf(v, 2)) + ' €' : ABS('non calculable')) : ABS('non publié')}${q && ok(q.pnl_latent_net_pct) ? `<div class="sm-only" style="font-size:9.5px">${pct(q.pnl_latent_net_pct)}</div>` : ''}</td>
+        <td class="hm ${q ? cls(q.pnl_latent_net_pct) : ''}">${q && ok(q.pnl_latent_net_pct) ? pct(q.pnl_latent_net_pct) : '—'}</td><td class="hm"><span class="st okk">Ouverte</span></td></tr>`; }).join('')
     || `<tr><td colspan="7" class="mut">aucune position ouverte</td></tr>`);
   const nU = rows.filter(r => r.b === 'ultra-1.0').length;
   const bh = p.carnets.btc_hold && p.carnets.btc_hold.courbe.slice(-1)[0];
@@ -213,7 +218,8 @@ function renderPos(X) {
     (bh ? ` Équité du carnet BTC réf. au cycle : ${eur(bh.equity)} (${sgn(bh.equity - CAPITAL, v => nf(v, 2))} €, sans frais de sortie).` : '');
 }
 
-const KIND = {ordre_ouvert: [4, 'ordre fictif ouvert'], achat_reference: [4, 'achat de référence'], position_ouverte: [5, 'position ouverte'], position_fermee: [5, 'position fermée'],
+const KIND = {ordre_ouvert: [4, 'ordre fictif ouvert'], ordre_rempli: [4, 'ordre rempli (maker)'], ordre_rempli_taker: [4, 'ordre rempli (taker)'],
+  ordre_rejete: [4, 'ordre rejeté'], ordre_partiel_puis_abandon: [4, 'ordre partiellement rempli puis abandonné'], ordre_non_rempli: [4, 'ordre non rempli, abandonné'], achat_reference: [4, 'achat de référence'], position_ouverte: [5, 'position ouverte'], position_fermee: [5, 'position fermée'],
   signal_perime: [4, 'signal périmé'], cycle_manque: [-1, 'cycle manqué'], trou_bougies: [-1, 'trou de bougies'], carnet_indisponible: [-1, 'carnet indisponible'],
   incertain_donnees_absentes: [5, 'incertain : données absentes'], sortie_reportee_carnet_indisponible: [5, 'sortie reportée']};
 function events(X) {
@@ -226,8 +232,8 @@ function events(X) {
     if (e) L.push({ts: c.ts + 1, s: 2, b: 'ultra', t: `${e.n} vérifié(s), ${e.o} objection(s)`});
     L.push({ts: c.ts + 2, s: 3, b: 'ultra', t: c.selected.length ? `${c.selected.map(base).join(', ')} sélectionné(s)` : 'aucune sélection'});
   });
-  (D.paper10 && D.paper10.evenements || []).forEach(e => { const [s, t] = KIND[e.kind] || (e.kind.startsWith('ordre_') ? [4, e.kind.replace('_', ' ')] : [-1, e.kind]);
-    L.push({ts: e.ts + 3, s, b: e.book === 'ultra-1.0' ? 'ultra' : 'ref', t: `${t}${e.market ? ' ' + base(e.market) : ''}${e.book !== 'ultra-1.0' ? ` (${(BOOKLBL[e.book] || [e.book])[0]})` : ''}`}); });
+  (D.paper10 && D.paper10.evenements || []).forEach(e => { const [s, t] = KIND[e.kind] || (e.kind.startsWith('ordre_') ? [4, e.kind.replace(/_/g, ' ')] : e.kind.startsWith('position_') ? [5, e.kind.replace(/_/g, ' ')] : [-1, e.kind.replace(/_/g, ' ')]);
+    L.push({ts: e.ts + 3, s, b: e.book === 'ultra-1.0' ? 'ultra' : 'ref', t: `${t}${e.market ? ' ' + base(e.market) : ''}${e.book !== 'ultra-1.0' ? ` (${(BOOKLBL[e.book] || [e.book])[0]})` : ''}${/reconstruit après coup/.test(e.detail || '') ? ' · reconstruit après coup' : ''}`}); });
   (D.status && D.status.derniers_cycles || []).forEach(r => L.push({ts: r.debut, s: -1, b: 'sys', t: `cycle GitHub : ${nf(r.duree_s, 0)} s, ${r.appels_api} appels API, ${r.erreurs.length} erreur(s)`}));
   return L.sort((a, b) => b.ts - a.ts);
 }
@@ -318,7 +324,7 @@ function planetSprite(r, hue) {
 }
 function sizeGal() {
   const cv = G.cv, sc = $('scene'); G.mobile = innerWidth < 760;
-  G.dpr = Math.min(window.devicePixelRatio || 1, 2);
+  G.dpr = Math.min(window.devicePixelRatio || 1, G.mobile ? 1.5 : 2);   // téléphone : 1,5 suffit pour une galaxie floue, divise le nombre de pixels par ~1,8
   G.w = Math.round(sc.clientWidth * G.dpr); G.h = Math.round(sc.clientHeight * G.dpr); cv.width = G.w; cv.height = G.h;
   const R = Math.min(G.w, G.h) * (wide() ? 0.62 : 0.5);
   G.R = R; G.spr = sprite(R, G.mobile ? 2200 : 5200);
