@@ -270,8 +270,10 @@ function startReplay() {
   const c0 = D.ultra10 && D.ultra10.cycles && D.ultra10.cycles[0];
   const el = $('replay');
   if (!c0) { replay.active = false; NODES.forEach(n => n.className = 'node'); el.className = 'replay'; el.textContent = 'Aucun cycle enregistré — rien à rejouer'; return; }
-  replay.label = `Rejeu du dernier cycle — ${hm(c0.ts)} (Paris)`;
-  if (RM) { replay.active = false; el.className = 'replay'; el.textContent = `Dernier cycle — ${hm(c0.ts)} (Paris) · animations réduites`; return; }
+  const lc = D.status && D.status.derniers_cycles && D.status.derniers_cycles[0], lt = lc ? lc.debut : c0.ts;
+  replay.when = `${hm(lt)} (Paris)` + (Math.abs(c0.ts - lt) > 10 * 60e3 ? ` · dernière passe Ultra ${hm(c0.ts)}` : '');
+  replay.label = `Rejeu du dernier cycle — ${replay.when}`;
+  if (RM) { replay.active = false; el.className = 'replay'; el.textContent = `Dernier cycle — ${replay.when} · animations réduites`; return; }
   replay.t0 = performance.now(); replay.active = true; replay.pending = !G.run; el.className = 'replay live'; el.textContent = replay.label;
 }
 const STEP_MS = 1700;
@@ -282,7 +284,7 @@ function replayTick(now) {
   if (ph >= STEPS.length + 0.4) {
     replay.active = false; NODES.forEach(n => n.className = 'node');
     const c0 = D.ultra10.cycles[0]; $('replay').className = 'replay';
-    $('replay').textContent = `Au repos · dernier cycle ${hm(c0.ts)} (Paris) · aucune activité en direct entre deux cycles`; return -1;
+    $('replay').textContent = `Au repos · dernier cycle ${replay.when} · aucune activité en direct entre deux cycles`; return -1;
   }
   const cur = Math.max(0, Math.min(STEPS.length - 1, Math.floor(ph)));
   NODES.forEach((n, i) => n.className = 'node' + (i === cur ? ' on' : i > cur ? ' dim' : ''));
