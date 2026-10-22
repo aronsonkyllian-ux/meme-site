@@ -105,7 +105,7 @@ async function load(){
  }catch(err){$('foot').textContent='Erreur de chargement : '+err}
 }
 async function J0(f){try{return await J(f)}catch(e){return null}}
-function eqsvg(books){const cols={'ultra-1.0':'#22f08a','S3':'#a78bfa','S2':'#5aa9ff','btc_hold':'#ffb020'};const pts=Object.values(books).flatMap(b=>b.courbe);
+function eqsvg(books){const cols={'ultra-1.0':'#22f08a','ultra-1.1':'#e05cff','S3':'#a78bfa','S2':'#5aa9ff','btc_hold':'#ffb020'};const pts=Object.values(books).flatMap(b=>b.courbe);
  if(pts.length<2)return '<div class="mut small">Courbe : pas encore assez de points.</div>';
  const t0=Math.min(...pts.map(p=>p.ts)),t1=Math.max(...pts.map(p=>p.ts)),v0=Math.min(...pts.map(p=>p.equity),990),v1=Math.max(...pts.map(p=>p.equity),1010);
  const X=t=>10+(t-t0)/((t1-t0)||1)*580,Y=v=>140-(v-v0)/((v1-v0)||1)*130;
