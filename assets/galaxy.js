@@ -241,7 +241,8 @@ function renderOrders() {
   $('ord').innerHTML = `<tr><th>Symbole</th><th class="l hm">Carnet</th><th class="l">Statut</th><th>Rempli</th><th>Prix limite</th><th class="hm">Montant</th><th class="hm">Âge</th><th class="hm">Type</th></tr>` +
     (rows.slice(0, 12).map(o => { const [t, c] = stLbl(o.status), age = o.status === 'ouvert' ? dur((Date.now() - o.created_ts) / 1000) : '<span class="mut" title="ordre clos">clos</span>';
       const why = o.status === 'rejete' ? rejWhy(o.b, o.market, o.created_ts) : null;
-      const whyH = o.status === 'rejete' ? `<div class="why">${why ? 'rejeté : ' + esc(why) : D.ui ? 'motif non enregistré' : 'motif non publié'}</div>` : '';
+      const exp = D.ui && D.ui.carnets && D.ui.carnets[o.b] && Array.isArray(D.ui.carnets[o.b].ordres_rejetes);   // export du motif présent dans ce cycle ?
+      const whyH = o.status === 'rejete' ? `<div class="why">${why ? 'rejeté : ' + esc(why) : exp ? 'motif non enregistré' : 'motif non publié (ui.json sans motifs de rejet)'}</div>` : '';
       return `<tr><td><span class="sym">${coin(o.market)}${esc(base(o.market))}</span><div class="sm-only">${book(o.b)}</div></td><td class="l hm">${book(o.b)}</td>
       <td class="l"><span class="st ${c}">${esc(t)}</span>${whyH}<div class="sm-only mut sub">${o.status === 'ouvert' ? 'âge ' + age : age}</div></td><td>${o.qty ? nf(o.filled_qty / o.qty * 100, 0) + ' %' : '—'}</td><td>${px(o.limit_px)}</td><td class="hm">${eur(o.qty * o.limit_px)}</td>
       <td class="hm">${age}</td><td class="g hm">Achat limite</td></tr>`; }).join('')
