@@ -103,3 +103,10 @@ th:first-child,td:first-child,.l{text-align:left}
 @media (max-width:600px){.ord .st{white-space:normal;display:inline-block;max-width:92px;line-height:1.2}}
 .sub{font-size:9.5px;white-space:normal;line-height:1.2}
 @media (max-width:600px){.scroll .coin{display:none}.scroll td:first-child{white-space:normal;max-width:96px}.scroll td,.scroll th{padding:6px 3px}.ord .st,.pos .st{white-space:normal;display:inline-block;max-width:88px;line-height:1.2}.sm-only .badge{display:inline-block;margin-top:2px}table{font-size:11.2px}}
+.badge.u11{color:var(--v);font-size:9px;padding:1px 5px}
+.tabs.bk{margin:0 0 6px}.tabs.bk button{padding:3px 8px;font-size:10.5px}
+.tabs.bk button.on[data-b="ultra-1.1"]{background:rgba(178,107,255,.18);border-color:var(--v);color:var(--v);box-shadow:0 0 10px rgba(178,107,255,.3)}
+.ch .cnt+select{margin-left:6px}
+.why{font-size:9.5px;color:var(--r);opacity:.9;line-height:1.25;margin-top:2px;white-space:normal;max-width:220px}
+table.cmp{width:100%;font-size:11px;margin:2px 0 6px;border-collapse:collapse}table.cmp td,table.cmp th{padding:3px 4px;text-align:right;border-bottom:1px solid rgba(255,255,255,.06)}table.cmp .l{text-align:left}
+.cmpv{font-size:.7em;white-space:nowrap}
