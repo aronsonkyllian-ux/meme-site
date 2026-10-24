@@ -20,15 +20,19 @@ const dur = s => s < 3600 ? Math.max(0, Math.round(s / 60)) + ' min' : Math.floo
 const base = m => String(m || '').replace(/-EUR$/, '');
 const hue = s => { let h = 0; for (const c of String(s)) h = (h * 31 + c.charCodeAt(0)) % 360; return h; };
 const coin = m => `<span class="coin" style="background:hsl(${hue(m)} 85% 60%)">${esc(base(m).slice(0, 2))}</span>`;
-const BOOKLBL = {'ultra-1.0': ['ULTRA 1.0', 'ul'], 'ultra-1.1': ['ULTRA 1.1', 'u11'], 'S3': ['S3 réf.', 'ref'], 'S2': ['S2 réf.', 'ref'], 'btc_hold': ['BTC réf.', 'ref']};
-const U10 = 'ultra-1.0', U11 = 'ultra-1.1', REFS = ['S3', 'S2', 'btc_hold'];
-const BCOL = {[U10]: '#22f08a', [U11]: '#b26bff'};
-const grp = b => b === U10 ? 'u10' : b === U11 ? 'u11' : 'ref';                 // groupe pour les filtres de carnet
+const BOOKLBL = {'ultra-1.0': ['1.0 ARCHIVÉ', 'u10a'], 'ultra-1.1': ['ULTRA 1.1', 'u11'], 'ultra-1.2-test': ['ULTRA 1.2-TEST', 'u12'], 'S3': ['S3 réf.', 'ref'], 'S2': ['S2 réf.', 'ref'], 'btc_hold': ['BTC réf.', 'ref']};
+const U10 = 'ultra-1.0', U11 = 'ultra-1.1', U12 = 'ultra-1.2-test', REFS = ['S3', 'S2', 'btc_hold'];
+const BCOL = {[U10]: '#7d8a9e', [U11]: '#b26bff', [U12]: '#38d6ff'};
+const BNAME = {[U10]: 'Ultra 1.0', [U11]: 'Ultra 1.1', [U12]: 'Ultra 1.2-test'};
+const grp = b => b === U10 ? 'u10' : b === U11 ? 'u11' : b === U12 ? 'u12' : 'ref';   // groupe pour les filtres de carnet
+const archOf = b => { const c = D.paper10 && D.paper10.carnets && D.paper10.carnets[b]; return c && c.archive ? c.archive : null; };   // archivage ENREGISTRÉ par le moteur
+const V12TXT = 'Même sélection Ultra v1.0, mêmes entrées, taille, frais, stop initial, sorties régime et 168 h que 1.1 ; 2 différences : (a) point mort et stop suiveur évalués sur clôture 1 h au lieu de 4 h ; (b) une montée de stop ne s\'applique qu\'à partir de l\'heure pleine suivant le cycle qui l\'observe (pas de rétroactivité).';
 const pass = (f, g) => f === 'all' || f === g;
 // motif de rejet ENREGISTRÉ par le moteur (ui.json, carnets[b].ordres_rejetes) ; jamais déduit
 const rejWhy = (b, m, ts) => { const c = D.ui && D.ui.carnets && D.ui.carnets[b]; if (!c || !c.ordres_rejetes) return null;
   const r = c.ordres_rejetes.find(x => x.market === m && x.created_ts === ts); return r ? (r.raison || r.raison_absente || null) : null; };
-const book = b => { const [t, c] = BOOKLBL[b] || [b, 'ref']; return `<span class="badge ${c}">${esc(t)}</span>`; };
+const book = b => { let [t, c] = BOOKLBL[b] || [b, 'ref']; if (b === U10 && !archOf(U10)) [t, c] = ['ULTRA 1.0', 'ul'];   // « archivé » seulement si le moteur l'a enregistré
+  return `<span class="badge ${c}">${esc(t)}</span>`; };
 const STEPS = [
   {k: 'SCAN', c: '#38b6ff', img: 'scan'}, {k: 'ANALYSE', c: '#b26bff', img: 'analyse'}, {k: 'VÉRIFICATION', c: '#ffd23f', img: 'verification'},
   {k: 'SÉLECTION', c: '#22f08a', img: 'selection'}, {k: 'EXÉCUTION', c: '#ff4d5e', img: 'execution'}, {k: 'SUIVI', c: '#e9f2ff', img: 'suivi'}];
@@ -36,7 +40,7 @@ const STEPS = [
 const POS_W = [[17, 33], [48, 21], [80, 33], [83, 68], [56, 78], [24, 70]];
 const POS_S = [[19, 29], [50, 18], [81, 29], [81, 60], [50, 73], [19, 60]];
 
-let D = {}, eqWin = 24, mktTab = 'TOUS', evFilter = 'all', capBk = U10, ordFilter = 'all', posFilter = 'all';
+let D = {}, eqWin = 24, mktTab = 'TOUS', evFilter = 'all', capBk = U11, ordFilter = 'all', posFilter = 'all';
 
 async function J(f) {
   try { const r = await fetch('data/' + f + '.json?' + Date.now(), {cache: 'no-store'}); if (!r.ok) return null; return await r.json(); }
@@ -54,18 +58,19 @@ function derive() {
   const c0 = u && u.cycles && u.cycles[0] || null;
   const jr = (u && u.journal) || [];
   const byM = {}; jr.forEach(r => { (byM[r.market] = byM[r.market] || {})[r.fn] = r; });
-  const ub = p && p.carnets && p.carnets[U10] || null, u11 = p && p.carnets && p.carnets[U11] || null;
+  const ub = p && p.carnets && p.carnets[U10] || null, u11 = p && p.carnets && p.carnets[U11] || null, u12 = p && p.carnets && p.carnets[U12] || null;
   const retenu = w && (w.exclusions || []).find(x => x.k === 'retenu');
   const inst = w && w.instantanes && w.instantanes[0];
   const eRows = jr.filter(r => r.fn === 'U-E'), dRows = jr.filter(r => r.fn === 'U-D');
   const verif = c0 ? new Set([...eRows, ...dRows].map(r => r.market)).size : null;
   const objections = eRows.filter(r => r.verdict === 'objection').length;
-  const ordOpen = ub ? ub.ordres.filter(o => o.status === 'ouvert') : null;
-  const posOpen = ub ? ub.positions.filter(x => x.status === 'ouverte') : null;
+  const ordOpen = u11 ? u11.ordres.filter(o => o.status === 'ouvert') : null;          // ULTRA 1.1 = version active mise en avant
+  const posOpen = u11 ? u11.positions.filter(x => x.status === 'ouverte') : null;
   const refPos = p ? Object.entries(p.carnets).filter(([k]) => REFS.includes(k)).reduce((n, [, b]) => n + b.positions.filter(x => x.status === 'ouverte').length, 0) : null;
-  const ord11 = u11 ? u11.ordres.filter(o => o.status === 'ouvert') : null, pos11 = u11 ? u11.positions.filter(x => x.status === 'ouverte') : null;
-  return {c0, byM, ub, u11, retenu: retenu ? retenu.n : null, nEur: inst ? inst.n_eur : null, verif, objections, ordOpen, posOpen, refPos, ord11, pos11,
-          uiBook: ui && ui.carnets && ui.carnets[U10] || null, ui11: ui && ui.carnets && ui.carnets[U11] || null};
+  const ord12 = u12 ? u12.ordres.filter(o => o.status === 'ouvert') : null, pos12 = u12 ? u12.positions.filter(x => x.status === 'ouverte') : null;
+  const uic = b => ui && ui.carnets && ui.carnets[b] || null;
+  return {c0, byM, ub, u11, u12, retenu: retenu ? retenu.n : null, nEur: inst ? inst.n_eur : null, verif, objections, ordOpen, posOpen, refPos, ord12, pos12,
+          uiBook: uic(U10), ui11: uic(U11), ui12: uic(U12), bk: {[U10]: ub, [U11]: u11, [U12]: u12}, uiB: {[U10]: uic(U10), [U11]: uic(U11), [U12]: uic(U12)}};
 }
 
 function stepFigures(X) {
@@ -75,8 +80,8 @@ function stepFigures(X) {
     c ? [`${c.n_deep} analysés`, 'flux B · carnet C'] : ['donnée absente', ''],
     c && X.verif != null ? [`${X.verif} vérifiés`, `${X.objections} objection${X.objections > 1 ? 's' : ''} (E)`] : ['donnée absente', ''],
     c ? [`${c.selected.length} sélectionné${c.selected.length > 1 ? 's' : ''}`, `${c.watched.length} surveillé${c.watched.length > 1 ? 's' : ''}`] : ['donnée absente', ''],
-    X.ordOpen ? [`${X.ordOpen.length} ordre${X.ordOpen.length > 1 ? 's' : ''} ouvert${X.ordOpen.length > 1 ? 's' : ''}`, X.ord11 ? `Ultra 1.0 · 1.1 : ${X.ord11.length}` : 'carnet Ultra 1.0'] : ['donnée absente', ''],
-    X.posOpen ? [`${X.posOpen.length} position${X.posOpen.length > 1 ? 's' : ''} Ultra 1.0`, (X.pos11 ? `1.1 : ${X.pos11.length}` : '') + (X.refPos ? `${X.pos11 ? ' · ' : '+ '}${X.refPos} réf.` : '')] : ['donnée absente', '']];
+    X.ordOpen ? [`${X.ordOpen.length} ordre${X.ordOpen.length > 1 ? 's' : ''} ouvert${X.ordOpen.length > 1 ? 's' : ''}`, X.ord12 ? `Ultra 1.1 · 1.2-test : ${X.ord12.length}` : 'carnet Ultra 1.1'] : ['donnée absente', ''],
+    X.posOpen ? [`${X.posOpen.length} position${X.posOpen.length > 1 ? 's' : ''} Ultra 1.1`, (X.pos12 ? `1.2-test : ${X.pos12.length}` : '') + (X.refPos ? `${X.pos12 ? ' · ' : '+ '}${X.refPos} réf.` : '')] : ['donnée absente', '']];
 }
 
 /* ---------------- rendu des panneaux ---------------- */
@@ -91,17 +96,17 @@ function renderFresh() {
 
 function svgLine(pts, Xp, Yp) { return pts.map(q => Xp(q.ts).toFixed(1) + ',' + Yp(q.equity).toFixed(1)).join(' '); }
 function renderCmp(X) {
-  const A = X.ub, B = X.u11;
-  $('capT').textContent = 'CAPITAL FICTIF ULTRA 1.0 vs 1.1';
+  const A = X.u11, B = X.u12;
+  $('capT').textContent = 'CAPITAL FICTIF ULTRA 1.1 vs 1.2-TEST';
   if (!A || !A.courbe.length || !B || !B.courbe.length) {
-    $('capV').innerHTML = ABS(B ? 'courbe 1.0 absente' : 'carnet ULTRA 1.1 non publié'); $('capD').innerHTML = ''; $('eq').innerHTML = '';
-    $('capNote').textContent = B ? '' : 'Le carnet ULTRA 1.1 apparaît à partir de son premier cycle (aucun rattrapage rétroactif).'; return;
+    $('capV').innerHTML = ABS(B ? 'courbe 1.1 absente' : 'carnet ULTRA 1.2-test non publié'); $('capD').innerHTML = ''; $('eq').innerHTML = '';
+    $('capNote').textContent = B ? '' : 'Le carnet ULTRA 1.2-test apparaît à partir de son premier cycle (aucun rattrapage rétroactif).'; return;
   }
   const la = A.courbe[A.courbe.length - 1], lb = B.courbe[B.courbe.length - 1];
   const na = la.equity - CAPITAL, nb = lb.equity - CAPITAL, d = lb.equity - la.equity;
-  $('capV').innerHTML = `<span class="cmpv"><span style="color:${BCOL[U10]}">${nf(la.equity, 2)} €</span> <span class="mut" style="font-size:.45em">vs</span> <span style="color:${BCOL[U11]}">${nf(lb.equity, 2)} €</span></span>`;
-  $('capD').innerHTML = `1.0 <span class="${cls(na)}">${pct(na / CAPITAL, 3)}</span> · 1.1 <span class="${cls(nb)}">${pct(nb / CAPITAL, 3)}</span> · écart 1.1 − 1.0 <span class="${cls(d)}">${sgn(d, v => nf(v, 2))} €</span>`;
-  const t1 = Math.max(la.ts, lb.ts), lo = t1 - eqWin * H;
+  $('capV').innerHTML = `<span class="cmpv"><span style="color:${BCOL[U11]}">${nf(la.equity, 2)} €</span> <span class="mut" style="font-size:.45em">vs</span> <span style="color:${BCOL[U12]}">${nf(lb.equity, 2)} €</span></span>`;
+  $('capD').innerHTML = `1.1 <span class="${cls(na)}">${pct(na / CAPITAL, 3)}</span> · 1.2-test <span class="${cls(nb)}">${pct(nb / CAPITAL, 3)}</span> · écart 1.2 − 1.1 <span class="${cls(d)}">${sgn(d, v => nf(v, 2))} €</span>`;
+  const t1 = Math.max(la.ts, lb.ts), lo = Math.max(t1 - eqWin * H, B.depart || 0);          // comparer seulement depuis le départ de 1.2-test
   const pa = A.courbe.filter(q => q.ts >= lo), pb = B.courbe.filter(q => q.ts >= lo), all = [...pa, ...pb];
   if (all.length < 2) { $('eq').innerHTML = `<div class="empty">courbe non significative (${all.length} point dans la fenêtre)</div>`; }
   else {
@@ -109,27 +114,28 @@ function renderCmp(X) {
     const Xp = t => (t - t0) / ((t1 - t0) || 1) * 296 + 2, Yp = v => 104 - (v - v0) / ((v1 - v0) || 1) * 98;
     const ln = (pts, c, dash) => pts.length > 1 ? `<polyline points="${svgLine(pts, Xp, Yp)}" fill="none" stroke="${c}" stroke-width="2" ${dash ? 'stroke-dasharray="5 3"' : ''} vector-effect="non-scaling-stroke"/>`
       : pts.length ? `<circle cx="${Xp(pts[0].ts)}" cy="${Yp(pts[0].equity)}" r="3.5" fill="${c}"/>` : '';
-    $('eq').innerHTML = `<svg viewBox="0 0 300 110" preserveAspectRatio="none"><line x1="0" x2="300" y1="${Yp(CAPITAL)}" y2="${Yp(CAPITAL)}" stroke="#3a4656" stroke-dasharray="4"/>${ln(pa, BCOL[U10])}${ln(pb, BCOL[U11], 1)}</svg>`;
+    $('eq').innerHTML = `<svg viewBox="0 0 300 110" preserveAspectRatio="none"><line x1="0" x2="300" y1="${Yp(CAPITAL)}" y2="${Yp(CAPITAL)}" stroke="#3a4656" stroke-dasharray="4"/>${ln(pa, BCOL[U11])}${ln(pb, BCOL[U12], 1)}</svg>`;
   }
-  const s10 = X.uiBook && X.uiBook.stats_clos, s11 = X.ui11 && X.ui11.stats_clos;
+  const s10 = X.ui11 && X.ui11.stats_clos, s11 = X.ui12 && X.ui12.stats_clos;
   const nOpen = c => c.positions.filter(x => x.status === 'ouverte').length, nRej = b => (D.ui && D.ui.carnets && D.ui.carnets[b] && D.ui.carnets[b].ordres_rejetes || []).length;
   const row = (t, a, b) => `<tr><td class="l">${t}</td><td>${a}</td><td>${b}</td></tr>`;
-  $('capNote').innerHTML = `<table class="cmp"><tr><th class="l"></th><th>${book(U10)}</th><th>${book(U11)}</th></tr>` +
-    row('Positions max', '3', '5') + row('Positions ouvertes', nOpen(A), nOpen(B)) +
+  $('capNote').innerHTML = `<table class="cmp"><tr><th class="l"></th><th>${book(U11)}</th><th>${book(U12)}</th></tr>` +
+    row('Stop évalué sur', 'clôture 4 h', 'clôture 1 h') + row('Montée du stop active', 'à la clôture', 'heure suivant le cycle') +
+    row('Positions ouvertes', nOpen(A), nOpen(B)) +
     row('Trades clos', s10 ? s10.n_clos : ABS('non publié'), s11 ? s11.n_clos : ABS('non publié')) +
-    row('Frais cumulés', eur(la.fees_cum), eur(lb.fees_cum)) + row('Ordres rejetés publiés', D.ui ? nRej(U10) : ABS('non publié'), D.ui ? nRej(U11) : ABS('non publié')) +
+    row('Frais cumulés', eur(la.fees_cum), eur(lb.fees_cum)) + row('Ordres rejetés publiés', D.ui ? nRej(U11) : ABS('non publié'), D.ui ? nRej(U12) : ABS('non publié')) +
     row('Départ', dhm(A.depart), dhm(B.depart)) + `</table>` +
-    `<div>Même sélection Ultra v1.0, mêmes stops, taille, frais et reconstitution ; seule différence : 5 positions simultanées au lieu de 3. 1.1 a démarré à son premier cycle (pas de rattrapage) : comparer seulement depuis son départ. n &lt; 30 trades : aucune conclusion. Trait plein = 1.0, pointillé violet = 1.1.</div>`;
+    `<div><b>1.2-test = test, n insuffisant.</b> ${V12TXT} 1.2-test a démarré à 1 000 € à son premier cycle (pas de rattrapage) et détient moins de positions au départ : comparer seulement depuis son départ. n &lt; 30 trades : aucune conclusion. Trait plein = 1.1, pointillé cyan = 1.2-test.</div>`;
 }
 function renderCap(X) {
   if (capBk === 'cmp') return renderCmp(X);
-  const ub = capBk === U11 ? X.u11 : X.ub;
-  $('capT').textContent = capBk === U11 ? 'CAPITAL FICTIF ULTRA 1.1' : 'CAPITAL FICTIF ULTRA 1.0';
-  if (capBk === U11 && !ub) {
+  const ub = X.bk[capBk], arch = archOf(capBk);
+  $('capT').textContent = 'CAPITAL FICTIF ' + (BNAME[capBk] || capBk).toUpperCase() + (arch ? ' · ARCHIVÉ' : capBk === U12 ? ' · TEST' : '');
+  if (capBk !== U10 && !ub) {
     $('capV').innerHTML = ABS('carnet non publié'); $('capD').innerHTML = ''; $('eq').innerHTML = '';
-    $('capNote').textContent = 'Le carnet ULTRA 1.1 apparaît à partir de son premier cycle (aucun rattrapage rétroactif).'; return;
+    $('capNote').textContent = `Le carnet ${BNAME[capBk]} apparaît à partir de son premier cycle (aucun rattrapage rétroactif).`; return;
   }
-  const col = BCOL[capBk] || BCOL[U10];
+  const col = BCOL[capBk] || BCOL[U11];
   if (!ub || !ub.courbe.length) {
     $('capV').innerHTML = ABS(); $('capD').innerHTML = ''; $('eq').innerHTML = `<div class="empty">courbe : donnée absente</div>`;
     $('capNote').textContent = 'Carnet fictif Ultra non publié (paper10.json absent).'; return;
@@ -150,7 +156,10 @@ function renderCap(X) {
       <line x1="0" x2="300" y1="${Yp(CAPITAL)}" y2="${Yp(CAPITAL)}" stroke="#3a4656" stroke-dasharray="4"/>
       <polygon points="${Xp(t0)},108 ${line} ${Xp(t1)},108" fill="url(#eqg)"/><polyline points="${line}" fill="none" stroke="${col}" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>`;
   }
-  $('capNote').innerHTML = `Liquide ${eur(l.cash)} · engagé (ordres/positions) ${eur(l.equity - l.cash)} · frais cumulés ${eur(l.fees_cum)} · ${ub.courbe.length} point(s) depuis le ${dhm(ub.depart)} · pointillé = 1 000 €${capBk === U11 ? ' · 5 positions max (1.0 : 3), même sélection Ultra v1.0' : ''}`;
+  const extra = capBk === U11 ? ' · <b>version active</b> · 5 positions max, sélection Ultra v1.0'
+    : capBk === U12 ? `<br><b>Test, n insuffisant.</b> ${V12TXT}`
+    : arch ? `<br><b>Carnet archivé le ${dhm(arch.depuis)}</b> : plus aucun ordre ni aucune gestion depuis. Historique conservé tel quel ; positions ouvertes figées (ni clôturées ni re-marquées) ; état final = dernier marquage réel du ${dhm(arch.dernier_marquage && arch.dernier_marquage.ts)}. Le scanner Ultra v1.0 continue de tourner (il sert 1.1 et 1.2-test).` : '';
+  $('capNote').innerHTML = `Liquide ${eur(l.cash)} · engagé (ordres/positions) ${eur(l.equity - l.cash)} · frais cumulés ${eur(l.fees_cum)} · ${ub.courbe.length} point(s) depuis le ${dhm(ub.depart)} · pointillé = 1 000 €${extra}`;
 }
 
 function curveDD(courbe) {
@@ -159,7 +168,7 @@ function curveDD(courbe) {
 }
 
 function renderKPI(X) {
-  const is11 = capBk === U11, ub = is11 ? X.u11 : X.ub, uB = is11 ? X.ui11 : X.uiBook, st = uB && uB.stats_clos, hasUi = !!D.ui && !!D.ui.carnets, bl = is11 ? 'Ultra 1.1' : 'Ultra 1.0';
+  const kb = capBk === 'cmp' ? U11 : capBk, ub = X.bk[kb], uB = X.uiB[kb], st = uB && uB.stats_clos, hasUi = !!D.ui && !!D.ui.carnets, bl = BNAME[kb] || kb;
   const k = (t, v, i = '') => `<div class="k"><span>${t}</span>${v}${i ? `<i>${i}</i>` : ''}</div>`;
   const reason = f => st && st.raisons && st.raisons[f] ? st.raisons[f] : hasUi ? 'non calculable' : 'non publié';
   const closedPub = ub ? ub.positions.filter(x => x.status === 'fermee').length : null;
@@ -247,7 +256,7 @@ function renderOrders() {
       <td class="l"><span class="st ${c}">${esc(t)}</span>${whyH}<div class="sm-only mut sub">${o.status === 'ouvert' ? 'âge ' + age : age}</div></td><td>${o.qty ? nf(o.filled_qty / o.qty * 100, 0) + ' %' : '—'}</td><td>${px(o.limit_px)}</td><td class="hm">${eur(o.qty * o.limit_px)}</td>
       <td class="hm">${age}</td><td class="g hm">Achat limite</td></tr>`; }).join('')
     || `<tr><td colspan="8" class="mut">aucun ordre fictif${ordFilter !== 'all' ? ' pour ce filtre' : ''}</td></tr>`);
-  $('ordNote').textContent = 'Statut constaté au dernier cycle (pas de suivi en direct entre deux cycles) ; remplissages reconstruits après coup à partir des transactions publiques. Âge = depuis la création, ordres ouverts seulement. Montant = quantité demandée × prix limite, hors frais ; Rempli = part exécutée. Motif d\'un rejet = texte enregistré par le moteur au moment de l\'ordre (rien n\'est déduit). ULTRA 1.1 = même sélection qu\'ULTRA 1.0, 5 positions max au lieu de 3. BTC réf. = carnet de référence « achat et conservation », pas Ultra.';
+  $('ordNote').textContent = 'Statut constaté au dernier cycle (pas de suivi en direct entre deux cycles) ; remplissages reconstruits après coup à partir des transactions publiques. Âge = depuis la création, ordres ouverts seulement. Montant = quantité demandée × prix limite, hors frais ; Rempli = part exécutée. Motif d\'un rejet = texte enregistré par le moteur au moment de l\'ordre (rien n\'est déduit). ULTRA 1.1 = version active (sélection Ultra v1.0, 5 positions max). ULTRA 1.2-test = test parallèle (mêmes entrées que 1.1, stop sur clôture 1 h). ULTRA 1.0 = carnet archivé (historique figé). BTC réf. = carnet de référence « achat et conservation », pas Ultra.';
 }
 
 function renderPos(X) {
@@ -258,21 +267,23 @@ function renderPos(X) {
   const mk = (b, m) => ui && ui[b] ? (ui[b].positions_ouvertes || []).find(q => q.market === m) : null;
   $('pos').innerHTML = `<tr><th>Symbole</th><th class="l hm">Carnet</th><th>Entrée</th><th>Marquage</th><th>P&amp;L net</th><th class="hm">P&amp;L %</th><th class="hm">Statut</th></tr>` +
     (rows.map(x => { const q = mk(x.b, x.market);
-      const mp = q ? (ok(q.marquage.prix) ? `${px(q.marquage.prix)}<div class="mut" style="font-size:9.5px">${q.marquage.source === 'bougie_1h_close' ? 'clôture 1 h' : 'ticker'} ${hm(q.marquage.ts)}</div>` : ABS('prix absent')) : ABS('non publié');
+      const ms = q && q.marquage.source === 'dernier_marquage_avant_archivage' ? 'figé ' + dhm(q.marquage.ts) : q && q.marquage.source === 'bougie_1h_close' ? 'clôture 1 h ' + hm(q.marquage.ts) : 'ticker ' + hm(q && q.marquage.ts);
+      const mp = q ? (ok(q.marquage.prix) ? `${px(q.marquage.prix)}<div class="mut" style="font-size:9.5px">${ms}</div>` : ABS(archOf(x.b) ? 'figé : prix non publié' : 'prix absent')) : ABS('non publié');
       return `<tr><td><span class="sym">${coin(x.market)}${esc(base(x.market))}</span><div class="sm-only">${book(x.b)}</div>${x.label ? `<div class="mut sub">${esc(x.label)}</div>` : ''}</td><td class="l hm">${book(x.b)}</td><td>${px(x.entry_px)}<div class="mut" style="font-size:9.5px">${dhm(x.entry_ts)}</div></td><td>${mp}</td>
         <td class="${q ? cls(q.pnl_latent_net) : ''}">${q ? (ok(q.pnl_latent_net) ? sgn(q.pnl_latent_net, v => nf(v, 2)) + ' €' : ABS('non calculable')) : ABS('non publié')}${q && ok(q.pnl_latent_net_pct) ? `<div class="sm-only" style="font-size:9.5px">${pct(q.pnl_latent_net_pct)}</div>` : ''}</td>
-        <td class="hm ${q ? cls(q.pnl_latent_net_pct) : ''}">${q && ok(q.pnl_latent_net_pct) ? pct(q.pnl_latent_net_pct) : '—'}</td><td class="hm"><span class="st okk">Ouverte</span></td></tr>`; }).join('')
+        <td class="hm ${q ? cls(q.pnl_latent_net_pct) : ''}">${q && ok(q.pnl_latent_net_pct) ? pct(q.pnl_latent_net_pct) : '—'}</td><td class="hm">${archOf(x.b) ? '<span class="st part" title="carnet archivé : position figée, ni clôturée ni re-marquée">Figée (archivé)</span>' : '<span class="st okk">Ouverte</span>'}</td></tr>`; }).join('')
     || `<tr><td colspan="7" class="mut">aucune position ouverte${posFilter !== 'all' ? ' pour ce filtre' : ''}</td></tr>`);
-  const nU = Object.values(p.carnets[U10] ? [p.carnets[U10]] : []).reduce((n, c) => n + c.positions.filter(x => x.status === 'ouverte').length, 0);
+  const nU = Object.values(p.carnets[U11] ? [p.carnets[U11]] : []).reduce((n, c) => n + c.positions.filter(x => x.status === 'ouverte').length, 0);
+  const a10 = archOf(U10), m10 = a10 && a10.dernier_marquage;
   const bh = p.carnets.btc_hold && p.carnets.btc_hold.courbe.slice(-1)[0];
-  $('posNote').innerHTML = `${nU ? '' : '<b>Ultra 1.0 : aucune position ouverte.</b> '}P&amp;L net latent = estimation au prix de marquage, après frais d'entrée réels et frais de sortie taker estimés (${D.ui && D.ui.frais_sortie_estimes ? nf(D.ui.frais_sortie_estimes.taux * 100, 2) + ' %' : 'non publié'}).` +
+  $('posNote').innerHTML = `${nU ? '' : '<b>Ultra 1.1 : aucune position ouverte.</b> '}${a10 ? `<b>ULTRA 1.0 archivé le ${dhm(a10.depuis)}</b> : ses positions sont figées au dernier marquage réel (${m10 ? dhm(m10.ts) + ', équité ' + eur(m10.equity) : 'non publié'}) ; aucun P&amp;L n'est recalculé depuis. ` : ''}P&amp;L net latent = estimation au prix de marquage, après frais d'entrée réels et frais de sortie taker estimés (${D.ui && D.ui.frais_sortie_estimes ? nf(D.ui.frais_sortie_estimes.taux * 100, 2) + ' %' : 'non publié'}).` +
     (bh ? ` Équité du carnet BTC réf. au cycle : ${eur(bh.equity)} (${sgn(bh.equity - CAPITAL, v => nf(v, 2))} €, sans frais de sortie).` : '');
 }
 
 const KIND = {ordre_ouvert: [4, 'ordre fictif ouvert'], ordre_rempli: [4, 'ordre rempli (maker)'], ordre_rempli_taker: [4, 'ordre rempli (taker)'],
   ordre_rejete: [4, 'ordre rejeté'], ordre_partiel_puis_abandon: [4, 'ordre partiellement rempli puis abandonné'], ordre_non_rempli: [4, 'ordre non rempli, abandonné'], achat_reference: [4, 'achat de référence'], position_ouverte: [5, 'position ouverte'], position_fermee: [5, 'position fermée'],
   signal_perime: [4, 'signal périmé'], cycle_manque: [-1, 'cycle manqué'], trou_bougies: [-1, 'trou de bougies'], carnet_indisponible: [-1, 'carnet indisponible'],
-  incertain_donnees_absentes: [5, 'incertain : données absentes'], sortie_reportee_carnet_indisponible: [5, 'sortie reportée']};
+  incertain_donnees_absentes: [5, 'incertain : données absentes'], sortie_reportee_carnet_indisponible: [5, 'sortie reportée'], stop_releve_programme: [5, 'montée de stop programmée (heure suivante)']};
 function events(X) {
   const L = [], u = D.ultra10;
   const hist = D.ui && D.ui.journal_ultra && D.ui.journal_ultra.cycles || [];
@@ -283,7 +294,9 @@ function events(X) {
     if (e) L.push({ts: c.ts + 1, s: 2, b: 'ultra', t: `${e.n} vérifié(s), ${e.o} objection(s)`});
     L.push({ts: c.ts + 2, s: 3, b: 'ultra', t: c.selected.length ? `${c.selected.map(base).join(', ')} sélectionné(s)` : 'aucune sélection'});
   });
-  const pev = [...(D.paper10 && D.paper10.evenements || []), ...(D.paper10 && D.paper10.carnets && D.paper10.carnets[U11] && D.paper10.carnets[U11].evenements || [])];
+  const cb = b => D.paper10 && D.paper10.carnets && D.paper10.carnets[b] && D.paper10.carnets[b].evenements || [];
+  const pev = [...(D.paper10 && D.paper10.evenements || []), ...cb(U11), ...cb(U12)];
+  const a10 = archOf(U10); if (a10 && a10.depuis) L.push({ts: a10.depuis + 4, s: -1, b: 'u10', t: 'carnet ULTRA 1.0 archivé : plus aucun ordre ni gestion (historique conservé)'});
   pev.forEach(e => { const [s, t] = KIND[e.kind] || (e.kind.startsWith('ordre_') ? [4, e.kind.replace(/_/g, ' ')] : e.kind.startsWith('position_') ? [5, e.kind.replace(/_/g, ' ')] : [-1, e.kind.replace(/_/g, ' ')]);
     const why = e.kind === 'ordre_rejete' ? rejWhy(e.book, e.market, e.ts) : null;
     L.push({ts: e.ts + 3, s, b: grp(e.book), t: `${t}${e.market ? ' ' + base(e.market) : ''} (${(BOOKLBL[e.book] || [e.book])[0]})${why ? ' — ' + why : ''}${/reconstruit après coup/.test(e.detail || '') ? ' · reconstruit après coup' : ''}`}); });
@@ -291,8 +304,8 @@ function events(X) {
   return L.sort((a, b) => b.ts - a.ts);
 }
 function renderEv(X) {
-  // les étapes de la passe Ultra (sélection commune) apparaissent sous ULTRA 1.0 et ULTRA 1.1
-  const L = events(X).filter(e => evFilter === 'all' || e.b === evFilter || (e.b === 'ultra' && (evFilter === 'u10' || evFilter === 'u11')));
+  // les étapes de la passe Ultra (sélection commune) apparaissent sous ULTRA 1.1 et ULTRA 1.2-test (et 1.0 pour son historique)
+  const L = events(X).filter(e => evFilter === 'all' || e.b === evFilter || (e.b === 'ultra' && (evFilter === 'u10' || evFilter === 'u11' || evFilter === 'u12')));
   $('ev').innerHTML = L.slice(0, 40).map(e => { const S = STEPS[e.s] || {k: 'SYSTÈME', c: '#8a97ad'};
     return `<div class="evr"><span class="t">${hm(e.ts)}</span><span class="s" style="color:${S.c}">● ${S.k}</span><span>${esc(e.t)}</span></div>`; }).join('')
     || `<div class="note">${D.status ? 'aucun événement' : 'donnée absente — en attente du premier cycle'}</div>`;
@@ -459,6 +472,10 @@ async function load() {
   // ui.json n'est valable que s'il vient du même cycle que status.json (sinon : périmé, traité comme non publié)
   if (D.ui && (!D.status || !D.ui.genere || Math.abs(D.ui.genere - D.status.genere) > 15 * 60e3 || D.ui.erreur)) D.ui = null;
   const X = derive();
+  const a10 = !!archOf(U10);                        // libellés 1.0 : « archivé » seulement après l'archivage enregistré par le moteur
+  BOOKLBL[U10][0] = a10 ? '1.0 ARCHIVÉ' : 'ULTRA 1.0';
+  const b10 = document.querySelector('#capTabs button[data-b="ultra-1.0"]'); if (b10) b10.textContent = a10 ? '1.0 ARCHIVÉ' : 'ULTRA 1.0';
+  document.querySelectorAll('select option[value="u10"]').forEach(o => o.textContent = a10 ? 'ULTRA 1.0 (ARCHIVÉ)' : 'ULTRA 1.0');
   const g = document.querySelector('.grid');
   let wb = $('waitBanner');
   if (!D.status) { if (!wb) { wb = document.createElement('div'); wb.id = 'waitBanner'; wb.className = 'wait'; wb.innerHTML = '<b>En attente du premier cycle GitHub.</b> Aucune donnée publiée : rien n\'est affiché tant que le cycle n\'a pas écrit ses propres données.'; g.parentNode.insertBefore(wb, g); } }

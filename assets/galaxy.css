@@ -110,3 +110,5 @@ th:first-child,td:first-child,.l{text-align:left}
 .why{font-size:9.5px;color:var(--r);opacity:.9;line-height:1.25;margin-top:2px;white-space:normal;max-width:220px}
 table.cmp{width:100%;font-size:11px;margin:2px 0 6px;border-collapse:collapse}table.cmp td,table.cmp th{padding:3px 4px;text-align:right;border-bottom:1px solid rgba(255,255,255,.06)}table.cmp .l{text-align:left}
 .cmpv{font-size:.7em;white-space:nowrap}
+.badge.u12{color:#38d6ff;font-size:9px;padding:1px 5px}.badge.u10a{color:#9aa6b8;font-size:9px;padding:1px 5px;border-style:dashed}
+table.cmp{table-layout:fixed}table.cmp td,table.cmp th{white-space:normal;overflow-wrap:anywhere}table.cmp th.l,table.cmp td.l{width:38%}table.cmp .badge{white-space:normal}
