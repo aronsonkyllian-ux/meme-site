@@ -255,11 +255,23 @@ const stLbl = s => SLBL[s] || [String(s).replace(/_/g, ' '), 'part'];
 const ROLE = {SCANNER: 'SCANNER', SCOUT: 'SCOUT', TRADER: 'TRADER', SENTINEL: 'SENTINEL', ARBITRE: 'ARBITRE', RESEARCH: 'RESEARCH'};
 const ROLEDO = {SCANNER: 'détecte les opportunités (scanner gelé)', SCOUT: 'analyse chaque candidat, filtre les stops trop serrés', TRADER: 'réévalue les positions, verrou de profit',
   SENTINEL: 'veto déterministe et risque', ARBITRE: 'seul décideur, idempotent', RESEARCH: 'registre des idées testées hors ligne (banc)'};
+function ghostPanel(F) {
+  if (!F || !F.actif) return '<div class="note"><b>Fantômes</b> : inactifs.</div>';
+  const t = (F.statistiques || {}).total || {}, pc = (F.statistiques || {}).par_classe || {}, GL = {non_pris: 'portefeuille plein / cash / minimum', ecarte_scout: 'écarté par SCOUT', veto_sentinel: 'veto SENTINEL', donnees: 'données insuffisantes', rejet: 'autre refus', inconnu: 'inconnu'};
+  const cls = Object.entries(pc).map(([k, v]) => `<div>${esc(GL[k] || k)} : ${v.n} signaux · ${v.clos} clos${v.clos ? ' · P&amp;L moyen ' + sgn(v.pnl / v.clos, x => nf(x, 2)) + ' €' : ''}</div>`).join('') || '<span class="mut">aucun signal non pris suivi pour l\'instant</span>';
+  const ST = {attente: 'ordre fantôme en attente de remplissage', ouvert: 'ouvert', ferme: 'clos', expire: 'expiré (limite jamais touchée)', non_simulable: 'non simulable (données manquantes)'};
+  const rows = (F.derniers || []).slice(0, 8).map(g => `<div><span class="st neu">fantôme</span> ${dhm(g.cree)} · ${esc(base(g.marche))} · ${esc(GL[g.classe] || g.classe)} · ${esc(ST[g.statut] || g.statut)}${g.statut === 'ferme' ? ` : <b>${sgn(g.pnl_eur, x => nf(x, 2))} €</b> (${nf(g.r, 2)} R, ${esc(String(g.motif || '').replace(/_/g, ' '))})` : g.statut === 'ouvert' && g.latent_eur != null ? ` : latent ${sgn(g.latent_eur, x => nf(x, 2))} €` : ''}</div>`).join('');
+  return `<div class="note"><b>Fantômes — signaux non pris, simulés en contrefactuel</b> (mêmes règles de sortie ; jamais d'ordre, jamais dans le portefeuille ni l'équité ; servent à la recherche et à la revue du soir). ${t.n || 0} suivis · ${t.clos || 0} clos${t.clos ? ' · P&amp;L moyen ' + sgn(t.pnl_moy_eur, x => nf(x, 2)) + ' € · ' + t.gagnants + ' gagnants' : ''}. Rotation : NON activée (analyse à partir de 30 fantômes clos).<br>${cls}<br>${rows}</div>`;
+}
 function renderTeam() {
   const T = D.team, el = $('teamBody'); if (!el) return;
   if (!T || !T.resume) { el.innerHTML = ABS('équipe non publiée (team.json absent : premier cycle équipe pas encore passé)'); return; }
   const r = T.resume, lr = r.derniere_execution_reelle || {}, pf = r.performance || {}, pg = r.protection_gains || {}, bg = r.budget_minutes || {}, dc = r.decisions || {};
-  const rows = Object.keys(ROLE).map(k => { const x = lr[k]; return `<tr><td class="l"><b>${k}</b><div class="mut sub">${esc(ROLEDO[k])}</div></td><td>${x ? dhm(x.ts) : '<span class="mut">jamais exécuté</span>'}</td><td class="l mut">${x ? esc(String(x.kind).replace(/_/g, ' ')) : ''}</td></tr>`; }).join('');
+  const lf = (T.ticks || []).find(t => t.kind === 'full' || t.kind === 'manual');          // dernier cycle complet réellement passé (ticks triés du plus récent au plus ancien)
+  const rows = Object.keys(ROLE).map(k => { const x = lr[k], noNew = (k === 'SCANNER' || k === 'SCOUT') && lf && (!x || lf.ts > x.ts);
+    const c2 = noNew ? dhm(lf.ts) : x ? dhm(x.ts) : '<span class="mut">jamais exécuté</span>';
+    const c3 = noNew ? `<span class="mut">cycle complet passé : aucun nouveau candidat${x ? ' (dernier candidat ' + dhm(x.ts) + ')' : ''}</span>` : x ? esc(String(x.kind).replace(/_/g, ' ')) : '';
+    return `<tr><td class="l"><b>${k}</b><div class="mut sub">${esc(ROLEDO[k])}</div></td><td>${c2}</td><td class="l mut">${c3}</td></tr>`; }).join('');
   const lock = (pg.verrous_poses_24h || []).slice(0, 5).map(x => `<div>${dhm(x.ts)} · ${esc(base(x.marche))} : pic net ${nf(x.pic_net_eur, 2)} € → <b>${nf(x.garanti_net_eur, 2)} € garantis</b>${x.execute === false ? ' (observation)' : ''}</div>`).join('') || '<span class="mut">aucun verrou posé sur les dernières 24 h</span>';
   const clo = (pg.cloturees_24h || []).map(x => `<div>${esc(base(x.marche))} : pic ${nf(x.pic_net_eur, 2)} € → réalisé ${nf(x.realise_eur, 2)} € (restitué ${nf(x.restitue_eur, 2)} €)</div>`).join('') || '<span class="mut">aucune clôture suivie</span>';
   const vet = (dc.vetos || []).slice(0, 5).map(v => `<div>${dhm(v.ts)} · ${esc(base(v.marche || ''))} : ${esc((v.vetos || []).join(' ; '))}</div>`).join('') || '<span class="mut">aucun veto SENTINEL sur les dernières 24 h</span>';
@@ -269,8 +281,9 @@ function renderTeam() {
   el.innerHTML = `<div class="note"><b>Modules de code déterministes, exécutés uniquement quand un passage GitHub a lieu</b> (complet toutes les 2 h, léger entre deux). Aucun agent ne tourne en continu ; ORION (revue du soir) est hors GitHub. ${esc(r.avertissement || '')}</div>
    <div class="scroll"><table class="cmp"><tr><th class="l">Rôle</th><th>Dernière exécution réelle</th><th class="l">Dernier acte</th></tr>${rows}</table></div>
    <div class="note"><b>Résultat</b> : équité ${pf.equite != null ? nf(pf.equite, 2) + ' €' : '—'} · 24 h ${pf.variation_24h_eur != null ? sgn(pf.variation_24h_eur, v => nf(v, 2)) + ' €' : '—'} · ${pf.n_clos_total != null ? pf.n_clos_total + ' trades clos' : ''} · ${esc(pf.avertissement || '')}</div>
-   <div class="note"><b>Protection des gains</b> (verrou : dès +10 € net de pic, le stop garantit 50 % du pic) — ${pg.verrou_profit && pg.verrou_profit.execute ? 'exécuté' : 'observation'} · preuve faible (voir journal de recherche)<br>${lock}<br><b>Pic vs réalisé (24 h)</b><br>${clo}</div>
+   <div class="note"><b>Protection des gains</b> (verrou par paliers : ${esc((pg.verrou_profit && pg.verrou_profit.regle) || '')}) — ${pg.verrou_profit && pg.verrou_profit.execute ? 'exécuté' : 'observation'} · preuve faible (voir journal de recherche)<br>${lock}<br><b>Pic vs réalisé (24 h)</b><br>${clo}</div>
    <div class="note"><b>Vetos SENTINEL</b><br>${vet}<br><b>Non pris — portefeuille plein</b> : ${np} (pas des erreurs) · suivi du mouvement depuis le signal<br>${missH}</div>
+   ${ghostPanel(r.fantomes)}
    <div class="note"><b>Journal de l'équipe</b> (append-only)<br>${jr}</div>
    <div class="note">Budget Actions : ${bg.projection_planifiee_mois != null ? '≈ ' + nf(bg.projection_planifiee_mois, 0) + ' min/mois prévus' : ''}${bg.projection_mesuree_mois != null ? ' · ' + nf(bg.projection_mesuree_mois, 0) + ' mesurés' : ''} sur ${bg.plafond_gratuit || 2000} gratuites · surveillance nominale toutes les 60 min, au mieux (retard GitHub ≈ 26 min). ${r.recherche && r.recherche.en_attente ? r.recherche.en_attente.length + ' idée(s) en observation' : ''}</div>`;
 }
