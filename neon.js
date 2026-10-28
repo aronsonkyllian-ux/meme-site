@@ -265,10 +265,10 @@ function EquityChart() {
   return {refresh() { legend(); t0 = performance.now(); prog = RM ? 1 : (prog >= 1 ? 1 : prog); layout(); kick(); }};
 }
 
-/* ===================== SALLE (aperçu) : la salle est dessinée par salle.js ; colonne de gauche + chargement des données = identiques au site ===================== */
+/* ===================== SALLE v2 (aperçu) : la salle est dessinée par salle2.js ; colonne de gauche + chargement des données = identiques au site ===================== */
 const LIVE = {price: {}, ts: 0};
 function Floor() {
-  return window.SalleFloor({$, D, LIVE, COL, ok, eur, fmtH, sym, hash, clamp, TAU, RM, latestCycle, lastEq});
+  return window.SalleFloor({$, D, LIVE, COL, ok, eur, fmtH, sym, hash, clamp, TAU, RM, latestCycle, lastEq, num, nf, ageStr, lastEv, latestWide, stats, latent});
 }
 /* ===================== bougies publiques Bitvavo (prix réels, sans clé) ===================== */
 async function candles(market, limit) {
