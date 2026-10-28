@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#05060f">
+<meta name="robots" content="noindex,nofollow">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="ORION">
+<title>ORION — aperçu néon</title>
+<link rel="icon" type="image/png" sizes="48x48" href="img/favicon-48.png?v=1">
+<link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32.png?v=1">
+<link rel="apple-touch-icon" sizes="180x180" href="img/apple-touch-icon.png?v=1">
+<link rel="manifest" href="manifest.webmanifest?v=1">
+<link rel="preload" as="image" href="img/room.webp?v=1" type="image/webp">
+<link rel="stylesheet" href="neon.css?v=1">
+</head>
+<body>
+<main class="wrap">
+  <div class="pv">APERÇU · nouveau design néon, pas encore publié — la page officielle reste <a href="../">celle-ci</a></div>
+  <header class="bar">
+    <h1 class="brand"><img src="img/favicon-48.png?v=1" width="26" height="26" alt=""><b>ORION</b><i>×</i><b class="u">ULTRA&nbsp;1.2</b></h1>
+    <div class="bst">
+      <span>JOUR <b id="s_day">—</b></span><span>DONNÉES <b id="s_age">—</b></span><span>OUVERTES <b id="s_op">—</b></span><span>CLOS <b id="s_cl">—</b></span>
+      <div class="live" id="live" title="Fraîcheur des données publiées"><i></i><span>—</span></div>
+    </div>
+  </header>
+
+  <div class="cols">
+    <div class="L">
+      <section class="pn kcap" aria-label="Capital">
+        <small>CAPITAL</small><b class="kbig c" id="k_cap">—</b><em id="k_capS">—</em>
+      </section>
+      <section class="pn kpl" aria-label="P&amp;L total">
+        <small>P&amp;L TOTAL</small><b class="kbig" id="k_pl">—</b><em id="k_plS">—</em>
+      </section>
+      <section class="pn eq" aria-label="Courbe du capital">
+        <header class="ph"><span class="pt">BALANCE HISTORY</span>
+          <span class="seg" id="rng" role="group" aria-label="Période"><button data-r="24H">24H</button><button data-r="7J" class="on">7J</button><button data-r="TOUT">TOUT</button></span></header>
+        <div class="strip" id="strip"></div>
+        <div class="chw" id="chw"><canvas id="eqc" role="img" aria-label="Courbe du capital avec achats et ventes"></canvas><div class="tip" id="tip" hidden></div></div>
+        <div class="leg" id="leg"></div>
+      </section>
+      <section class="pn pos">
+        <header class="ph"><span class="pt">POSITIONS</span><span class="pm" id="posCnt">—</span></header>
+        <div class="pl" id="plist"></div>
+      </section>
+      <section class="pn log">
+        <header class="ph"><span class="pt">ACTIVITY LOG</span><span class="pm" id="logMeta">—</span></header>
+        <div class="lines" id="lines"></div>
+      </section>
+    </div>
+
+    <div class="R">
+      <section class="floor" id="hero" aria-label="THE ORION FLOOR">
+        <header class="fh"><span class="ft">THE ORION FLOOR</span><span class="pm" id="floorMeta">—</span></header>
+        <div class="stage" id="stage">
+          <div class="room" id="room">
+            <img class="bg" src="img/room.webp?v=1" alt="Salle de marché néon vue du dessus" width="1152" height="864" decoding="async">
+            <canvas id="fc" aria-hidden="true"></canvas>
+            <div class="chars" id="chars" aria-hidden="true"></div>
+            <div class="bub" id="bub" hidden></div>
+          </div>
+        </div>
+        <div class="ticker" id="ticker"><i class="dot"></i><b id="tkWho">—</b><span id="tkTxt">—</span><em id="tkTag"></em></div>
+        <p class="deco">Animation décorative · les déplacements rejouent les événements réels du dernier cycle · courbes, positions et chiffres = données réelles · les agents ne tournent pas en continu entre deux ticks</p>
+      </section>
+      <section class="agents" id="agents" aria-label="Agents">
+        <article class="pn ag" data-k="scout"><img src="img/scout.webp?v=1" alt="" width="64" height="64" loading="lazy"><div><h3>SCOUT <i>· Scanner</i></h3><p id="a_scout">—</p></div></article>
+        <article class="pn ag" data-k="trader"><img src="img/trader.webp?v=1" alt="" width="64" height="64" loading="lazy"><div><h3>TRADER <i>· Positions</i></h3><p id="a_trader">—</p></div></article>
+        <article class="pn ag" data-k="sentinel"><img src="img/sentinel.webp?v=1" alt="" width="64" height="64" loading="lazy"><div><h3>SENTINEL <i>· Risque</i></h3><p id="a_sentinel">—</p></div></article>
+        <article class="pn ag" data-k="research"><img src="img/research.webp?v=1" alt="" width="64" height="64" loading="lazy"><div><h3>RESEARCH <i>· Carnets</i></h3><p id="a_research">—</p></div></article>
+        <article class="pn ag" data-k="arbitre"><img src="img/arbitre.webp?v=1" alt="" width="64" height="64" loading="lazy"><div><h3>ARBITRE <i>· Décision</i></h3><p id="a_arbitre">—</p></div></article>
+      </section>
+      <section class="pn scan" aria-label="Scanner">
+        <header class="ph"><span class="pt">SCANNER</span><span class="pm" id="scanMeta">—</span></header>
+        <div class="scb"><div class="funnel" id="funnel"></div><div class="why" id="why"></div></div>
+      </section>
+      <section class="pn gh" aria-label="Carnets fantômes">
+        <header class="ph"><span class="pt">CARNETS FANTÔMES</span><span class="pm" id="ghMeta">—</span></header>
+        <div class="ghn" id="ghNote">Trades hypothétiques en papier, jamais exécutés. Moins de 30 trades clôturés : rien n'est conclu.</div>
+        <div id="ghList"></div>
+      </section>
+    </div>
+  </div>
+
+  <footer class="foot">
+    <span id="badge">Paper trading · capital fictif · aucun ordre réel</span>
+    <a href="../">page officielle</a>
+  </footer>
+</main>
+<noscript><p class="ns">JavaScript est nécessaire pour afficher les données.</p></noscript>
+<script src="neon.js?v=1"></script>
+</body>
+</html>
