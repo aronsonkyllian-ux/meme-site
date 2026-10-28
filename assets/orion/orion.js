@@ -1,4 +1,4 @@
-/* ORION // ULTRA 1.2 — lit uniquement data/{paper10,ui,status,team,wide,ultra}.json (publiés par le cycle).
+/* ORION // ULTRA 1.2 — lit uniquement data/{paper10,ui,status,team,wide,ultra,ghosts}.json (publiés par le cycle).
    Aucune valeur inventée : donnée absente = « — ». Le bureau pixel-art est purement décoratif (animation décorative). */
 (() => {
 'use strict';
@@ -129,6 +129,21 @@ function renderFoot(ui) {
   $('badge').textContent = 'Paper trading · capital fictif · aucun ordre réel' + (b && ok(b.n_clos) ? ` · ${b.n_clos} trade${b.n_clos > 1 ? 's' : ''} clos` + (b.n_clos < nmin ? ' : rien de prouvé' : '') : '');
   if (office) { /* meta du bureau */ }
   const fm = $('floorMeta'); fm.textContent = '5 AGENTS · ' + (b && ok(b.n_clos) ? b.n_clos + ' TRADES CLOS' : '— TRADES CLOS');
+}
+/* ---- carnets fantômes : data/ghosts.json (agrégats publiés par le cycle ; hypothétiques, jamais exécutés) ---- */
+function renderGhosts(g) {
+  const list = $('ghList'), meta = $('ghMeta');
+  if (!g || !Array.isArray(g.carnets)) { list.innerHTML = '<div class="empty">—</div>'; meta.textContent = '—'; return; }
+  const n = ok(g.seuil_lecture) ? g.seuil_lecture : 30;
+  meta.textContent = 'HYPOTHÉTIQUES · PAPIER · ' + (ok(g.genere) ? fmtDT(g.genere) : '—');
+  if (g.avertissement) $('ghNote').textContent = g.avertissement;
+  list.innerHTML = g.carnets.map(c => {
+    const cl = ok(c.clos) ? c.clos : null, pc = cl === null ? 0 : Math.min(100, Math.round(100 * cl / n));
+    return `<div class="gx"><div class="gt"><b>${esc(c.id)}</b><em>${esc(c.nom)}</em><span class="gp">${cl === null ? '—' : cl}/${n}${cl !== null && cl < n ? ' · non concluant' : ''}</span></div>
+      <div class="gd">${esc(c.description)}</div>
+      <div class="gs"><span><i>PRIS</i>${ok(c.pris) ? c.pris : '—'}</span><span><i>ATTENTE</i>${ok(c.attente) ? c.attente : '—'}</span><span><i>OUVERTS</i>${ok(c.ouverts) ? c.ouverts : '—'}</span><span><i>CLOS</i>${cl === null ? '—' : cl} (${ok(c.gagnants) ? c.gagnants : '—'}G / ${ok(c.perdants) ? c.perdants : '—'}P)</span><span class="${cls(c.pnl_realise_eur)}"><i>RÉALISÉ</i>${eur(c.pnl_realise_eur, true)}</span><span class="${cls(c.pnl_latent_eur)}"><i>LATENT</i>${eur(c.pnl_latent_eur, true)}</span></div>
+      <div class="gb"><u style="width:${pc}%"></u></div></div>`;
+  }).join('');
 }
 /* ---- scanner : données réelles du dernier scan (wide.json, ultra.json, ui.json) ---- */
 const EXCL = {volume24h_lt_10k_eur: 'volume 24 h < 10 k€', stablecoin: 'stablecoin', spread_gt_2pct: 'spread > 2 %'};
@@ -507,11 +522,11 @@ function Scanner(cv) {
 
 /* ===================== chargement + démarrage ===================== */
 async function load() {
-  const [p, ui, st, team, wide, ultra] = await Promise.all([get('paper10'), get('ui'), get('status'), get('team'), get('wide'), get('ultra')]);
+  const [p, ui, st, team, wide, ultra, ghosts] = await Promise.all([get('paper10'), get('ui'), get('status'), get('team'), get('wide'), get('ultra'), get('ghosts')]);
   const safe = f => { try { f(); } catch (e) { console.error(e); } };
   const rows = openRows(p, ui); D.pos = rows;
   safe(() => renderTop(p, st)); safe(() => renderKpi(p, ui, rows)); safe(() => renderBal()); safe(() => renderPos(rows));
-  safe(() => renderLog(p, team)); safe(() => renderAgents(team)); safe(() => renderFoot(ui)); safe(() => renderScan(wide, ultra, ui));
+  safe(() => renderLog(p, team)); safe(() => renderAgents(team)); safe(() => renderFoot(ui)); safe(() => renderScan(wide, ultra, ui)); safe(() => renderGhosts(ghosts));
   if (office) safe(() => office.refresh());
 }
 try {

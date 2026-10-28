@@ -25,7 +25,7 @@ b{font-weight:700}
 /* mise en page */
 .cols{display:grid;grid-template-columns:minmax(0,1fr);gap:8px}
 .L,.R{display:contents}
-.floor{order:1}.agents{order:2}.kpi{order:3}.bal{order:4}.scan{order:5}.pos{order:6}.log{order:7}
+.floor{order:1}.agents{order:2}.kpi{order:3}.bal{order:4}.scan{order:5}.pos{order:6}.log{order:7}.gh{order:8}
 @media(min-width:900px){
  .cols{grid-template-columns:300px minmax(0,1fr);align-items:start}
  .L,.R{display:flex;flex-direction:column;gap:8px;min-width:0}
@@ -83,6 +83,13 @@ b{font-weight:700}
 .foot{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:12px;font-size:8.5px;letter-spacing:.08em;color:var(--mut);text-transform:uppercase}
 .foot a{color:var(--mut)}.foot a:hover{color:var(--tx)}
 .ns{padding:16px;color:var(--a)}
+/* carnets fantômes */
+.ghn{padding:7px 10px;border-bottom:1px solid var(--bd);font-size:9px;color:var(--a);letter-spacing:.03em;line-height:1.5}
+.gx{padding:8px 10px;border-bottom:1px solid var(--bd)}.gx:last-child{border:0}
+.gx .gt{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}.gx .gt b{color:#fff}.gx .gt em{font-style:normal;color:var(--tx)}.gx .gt .gp{margin-left:auto;color:var(--mut);font-size:9px}
+.gx .gd{margin-top:2px;font-size:9px;color:var(--mut);line-height:1.45}
+.gx .gs{display:flex;flex-wrap:wrap;gap:3px 12px;margin-top:5px;font-size:10px}.gx .gs span{white-space:nowrap}.gx .gs i{font-style:normal;color:var(--mut);margin-right:4px;font-size:8.5px;letter-spacing:.08em}
+.gx .gb{height:3px;background:var(--bd);margin-top:6px;border-radius:1px;overflow:hidden}.gx .gb u{display:block;height:100%;background:var(--a);text-decoration:none}
 @media(max-width:520px){
  .wrap{padding:8px 8px 16px}
  .bst{gap:9px 11px;font-size:8.5px}
