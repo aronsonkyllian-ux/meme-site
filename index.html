@@ -3,84 +3,75 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#03040a">
+<meta name="theme-color" content="#05070c">
 <meta name="robots" content="noindex,nofollow">
-<title>MEME AUTONOME — simulation (argent fictif)</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 48 40%22%3E%3Cpath d=%22M3 6 L12 6 L20 32 L13 36 Z%22 fill=%22%2322f08a%22/%3E%3Cpath d=%22M27 34 L37 4 L45 4 L34 36 Z%22 fill=%22%2322f08a%22/%3E%3C/svg%3E">
-<link rel="stylesheet" href="assets/galaxy.css">
-<link rel="preload" as="image" href="assets/scan.webp">
+<title>ORION × ULTRA 1.2</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22 shape-rendering=%22crispEdges%22%3E%3Crect width=%2216%22 height=%2216%22 fill=%22%2305070c%22/%3E%3Cpath fill=%22%23ff3e80%22 d=%22M4 3h8v1h1v8h-1v1H4v-1H3V4h1z%22/%3E%3Cpath fill=%22%230c0a1a%22 d=%22M6 6h1v3H6zM9 6h1v3H9z%22/%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/orion/orion.css">
 </head>
 <body>
-<canvas id="sky" aria-hidden="true"></canvas>
-<div class="app">
- <header class="top">
-  <div class="brand"><svg class="logo" viewBox="0 0 48 40" aria-hidden="true"><defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#b6ffd9"/><stop offset="1" stop-color="#19e07a"/></linearGradient></defs><path d="M3 6 L12 6 L20 32 L13 36 Z" fill="url(#lg)"/><path d="M27 34 L37 4 L45 4 L34 36 Z" fill="url(#lg)"/></svg><h1>MEME AUTONOME</h1></div>
-  <div class="hright"><span class="pill sim">SIMULATION · ARGENT FICTIF</span><span class="pill" id="fresh">…</span><span class="clock" id="clock">--:--</span></div>
- </header>
+<main class="wrap">
+  <header class="bar">
+    <h1 class="brand"><svg class="logo" viewBox="0 0 16 16" width="18" height="18" shape-rendering="crispEdges" aria-hidden="true"><path fill="#ff3e80" d="M4 3h8v1h1v8h-1v1H4v-1H3V4h1z"/><path fill="#0c0a1a" d="M6 6h1v3H6zM9 6h1v3H9z"/><path fill="#ffd45a" d="M5 1h1v2H5zM7 0h2v3H7zM10 1h1v2h-1z"/></svg><b>ORION</b><i>×</i><b class="u">ULTRA&nbsp;1.2</b></h1>
+    <div class="bst">
+      <span>JOUR <b id="s_day">—</b></span><span>DONNÉES <b id="s_age">—</b></span><span>OUVERTES <b id="s_op">—</b></span><span>CLOS <b id="s_cl">—</b></span>
+      <div class="live" id="live" title="Fraîcheur des données publiées"><i></i><span>—</span></div>
+    </div>
+  </header>
 
- <main class="grid">
-  <section class="card cap" id="cardCap">
-   <div class="ch"><span class="ic g">◎</span><span id="capT">CAPITAL FICTIF ORION ULTRA 1.2</span> <span class="sub">net après frais</span></div>
-   <div class="tabs bk" id="capTabs"><button data-b="ultra-1.2-test" class="on">ORION ULTRA 1.2</button><button data-b="ultra-1.1">1.1 ARCHIVÉ</button><button data-b="ultra-1.0">1.0 ARCHIVÉ</button></div>
-   <div class="capv" id="capV">—</div>
-   <div class="capd" id="capD"></div>
-   <div class="eq" id="eq"></div>
-   <div class="tabs" id="eqTabs"><button data-w="1">1H</button><button data-w="4">4H</button><button data-w="24" class="on">1D</button><button data-w="168">1W</button></div>
-   <div class="note" id="capNote"></div>
-  </section>
+  <div class="cols">
+    <div class="L">
+      <section class="kpi" aria-label="Indicateurs">
+        <div class="cd kt"><small>CAPITAL</small><b class="kv" id="k_cap">—</b><em id="k_capS">—</em></div>
+        <div class="cd kt"><small>P&amp;L TOTAL</small><b class="kv" id="k_pl">—</b><em id="k_plS">—</em></div>
+        <div class="cd kt"><small>LATENT</small><b class="kv" id="k_lat">—</b><em id="k_latS">—</em></div>
+        <div class="cd kt"><small>WIN RATE</small><b class="kv" id="k_win">—</b><em id="k_winS">—</em></div>
+      </section>
+      <section class="cd bal">
+        <header class="ch"><span class="ct">BALANCE HISTORY</span><span class="cm" id="balMeta">—</span></header>
+        <div class="balw"><div id="balChart"></div><b class="bv" id="balVal">—</b></div>
+      </section>
+      <section class="cd pos">
+        <header class="ch"><span class="ct">POSITIONS</span><span class="cm" id="posCnt">—</span></header>
+        <div class="pl" id="plist"></div>
+      </section>
+      <section class="cd log">
+        <header class="ch"><span class="ct">ACTIVITY LOG</span><span class="cm" id="logMeta">—</span></header>
+        <div class="lines" id="lines"></div>
+      </section>
+    </div>
 
-  <section class="card kpi" id="kpi"></section>
+    <div class="R">
+      <section class="cd floor" id="hero" aria-label="Bureau d'ORION (animation décorative)">
+        <header class="ch"><span class="ct">THE ORION FLOOR</span><span class="cm" id="floorMeta">—</span></header>
+        <div class="stage"><canvas id="cv" role="img" aria-label="Bureau pixel-art : ORION, SCOUT, TRADER, SENTINEL et RESEARCH se déplacent entre les bureaux dont les écrans affichent les positions ouvertes ; l'écran mural affiche la courbe d'équité. Animation décorative."></canvas></div>
+        <p class="deco">Animation décorative · courbe, positions et latent affichés = données réelles</p>
+      </section>
+      <section class="agents" id="agents" aria-label="Agents">
+        <button class="cd ag" data-k="ORION"><canvas width="16" height="16"></canvas><span><b>ORION</b><small>DIRECTEUR</small></span></button>
+        <button class="cd ag" data-k="SCOUT"><canvas width="16" height="16"></canvas><span><b>SCOUT</b><small>DÉTECTE</small></span></button>
+        <button class="cd ag" data-k="TRADER"><canvas width="16" height="16"></canvas><span><b>TRADER</b><small>EXÉCUTE</small></span></button>
+        <button class="cd ag" data-k="SENTINEL"><canvas width="16" height="16"></canvas><span><b>SENTINEL</b><small>PROTÈGE</small></span></button>
+        <button class="cd ag" data-k="RESEARCH"><canvas width="16" height="16"></canvas><span><b>RESEARCH</b><small>TESTE</small></span></button>
+      </section>
+      <section class="cd scan" aria-label="Scanner">
+        <header class="ch"><span class="ct">SCANNER</span><span class="cm" id="scanMeta">—</span></header>
+        <div class="scb">
+          <div class="scanwrap"><canvas id="cv3" role="img" aria-label="Animation décorative d'un balayage de symboles"></canvas></div>
+          <div class="funnel" id="funnel"></div>
+          <div class="why" id="why"></div>
+          <p class="note" id="scanNote">Animation décorative — rejoue les symboles réels du dernier scan.</p>
+        </div>
+      </section>
+    </div>
+  </div>
 
-  <section class="card next">
-   <div class="nx"><svg viewBox="0 0 40 40" class="nxic" aria-hidden="true"><circle cx="20" cy="22" r="14" fill="none" stroke="#22f08a" stroke-width="3"/><path d="M20 22 L20 13 M20 22 L27 26" stroke="#22f08a" stroke-width="3" stroke-linecap="round"/><path d="M15 4 h10" stroke="#22f08a" stroke-width="3" stroke-linecap="round"/></svg>
-   <div><div class="ch2">PROCHAIN CYCLE</div><div class="cd" id="cd">--:--:--</div></div></div>
-   <div class="note" id="nxNote"></div>
-  </section>
-
-  <section class="card mkt">
-   <div class="ch"><span class="ic g">◉</span>MARCHÉS SCANNÉS <span class="cnt" id="mktCnt"></span></div>
-   <div class="tabs" id="mktTabs"><button data-k="TOUS" class="on">TOUS</button><button data-k="S3">S3</button><button data-k="S2">S2</button><button data-k="S1_liquidite">S1</button></div>
-   <div id="mkt"></div>
-  </section>
-
-  <section class="scene" id="scene" aria-label="Rejeu animé du dernier cycle enregistré">
-   <canvas id="gal"></canvas>
-   <div id="nodes"></div>
-   <div class="core"><svg viewBox="0 0 48 40" aria-hidden="true"><path d="M3 6 L12 6 L20 32 L13 36 Z" fill="#fff6c8"/><path d="M27 34 L37 4 L45 4 L34 36 Z" fill="#fff6c8"/></svg></div>
-   <div class="replay" id="replay">…</div>
-  </section>
-
-  <section class="card opp">
-   <div class="ch"><span class="ic g">◎</span>TOP OPPORTUNITÉS <span class="sub">Ultra, dernier cycle</span></div>
-   <div id="opp"></div>
-  </section>
-
-  <section class="card" id="cardTeam" style="grid-column:1/-1">
-   <div class="ch"><span class="ic g">◈</span>ÉQUIPE ORION ULTRA 1.2 <span class="sub">dernières exécutions réelles</span></div>
-   <div id="teamBody"><div class="empty">chargement…</div></div>
-  </section>
-
-  <section class="card ord">
-   <div class="ch"><span class="ic g">▤</span>ORDRES FICTIFS OUVERTS <span class="cnt" id="ordCnt"></span><select id="ordF" aria-label="filtre carnet (ordres)"><option value="all">TOUS</option><option value="u12">ORION ULTRA 1.2</option><option value="u11">ULTRA 1.1</option><option value="u10">ULTRA 1.0 (ARCHIVÉ)</option><option value="ref">RÉFÉRENCES</option></select></div>
-   <div class="scroll"><table id="ord"></table></div><div class="note" id="ordNote"></div>
-  </section>
-
-  <section class="card pos">
-   <div class="ch"><span class="ic g">▣</span>POSITIONS FICTIVES EN COURS <span class="cnt" id="posCnt"></span><select id="posF" aria-label="filtre carnet (positions)"><option value="all">TOUS</option><option value="u12">ORION ULTRA 1.2</option><option value="u11">ULTRA 1.1</option><option value="u10">ULTRA 1.0 (ARCHIVÉ)</option><option value="ref">RÉFÉRENCES</option></select></div>
-   <div class="scroll"><table id="pos"></table></div><div class="note" id="posNote"></div>
-  </section>
-
-  <section class="card ev">
-   <div class="ch"><span class="ic g">◷</span>DERNIERS ÉVÉNEMENTS <select id="evF" aria-label="filtre carnet (événements)"><option value="all">TOUS</option><option value="u12">ORION ULTRA 1.2</option><option value="u11">ULTRA 1.1</option><option value="u10">ULTRA 1.0 (ARCHIVÉ)</option><option value="ref">RÉFÉRENCES</option></select></div>
-   <div id="ev"></div>
-  </section>
- </main>
-
- <footer class="disc">
-  <p><b>Recherche / simulation uniquement</b> — argent fictif (carnets de 1 000 € imaginaires), aucun ordre réel, aucun argent, aucun conseil. Données publiques Bitvavo. Passages automatiques GitHub : cycle complet toutes les 2 h et tick léger (positions seulement) entre deux, au mieux (retard GitHub ≈ 26 min) : le carnet n'est observé qu'à chaque passage ; ORION ULTRA 1.2 est la seule version active, ULTRA 1.1 et 1.0 sont archivées (historique conservé) ; remplissages et stops entre deux cycles <b>reconstruits après coup</b> (ce qui manque est marqué « incertain »). Les cycles peuvent être retardés ou sautés. <b>Aucun avantage n'est démontré</b> : n insuffisant tant qu'il y a moins de 30 trades clos.</p>
-  <p>Les animations rejouent le <b>dernier cycle enregistré</b> ; elles ne montrent aucune activité en direct entre deux cycles. Heures en Europe/Paris. <a href="v1-classic/">Version classique (détails complets)</a></p>
- </footer>
-</div>
-<script src="assets/galaxy.js"></script>
+  <footer class="foot">
+    <span id="badge">Paper trading · capital fictif · aucun ordre réel</span>
+    <a href="v1-classic/">version classique</a>
+  </footer>
+</main>
+<noscript><p class="ns">JavaScript est nécessaire pour afficher les données.</p></noscript>
+<script src="assets/orion/orion.js"></script>
 </body>
 </html>
