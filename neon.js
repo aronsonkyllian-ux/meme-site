@@ -1,11 +1,11 @@
-/* ORION — aperçu néon. Lit uniquement ../data/{paper10,ui,status,team,wide,ghosts}.json (publiés par le cycle)
+/* ORION — THE ORION FLOOR. Lit uniquement data/{paper10,ui,status,team,wide,ghosts}.json (publiés par le cycle)
    + bougies publiques Bitvavo (1 h, sans clé) pour les graphiques de prix. Donnée absente = « — ». Aucune valeur inventée. */
 (() => {
 'use strict';
 const $ = id => document.getElementById(id);
 const RM = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
 const BOOK = 'ultra-1.2-test';
-const DATA = new URL('../data/', document.currentScript.src).href;
+const DATA = new URL('data/', document.currentScript.src).href;
 const ok = x => typeof x === 'number' && isFinite(x);
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
 const nf = o => new Intl.NumberFormat('fr-FR', o);
@@ -296,7 +296,7 @@ function Floor() {
   const actors = {}; let kf = 1;
   for (const k in CH) {
     const c = CH[k], el = document.createElement('div'); el.className = 'ch'; el.dataset.k = k; el.style.setProperty('--c', c.c); el.style.setProperty('--d', c.d);
-    el.innerHTML = '<div class="sh"></div><div class="bb"><div class="ring"></div><div class="tl"><img alt="" src="img/' + k + '.webp?v=3" decoding="async"></div></div><div class="tg2">—</div>';
+    el.innerHTML = '<div class="sh"></div><div class="bb"><div class="ring"></div><div class="tl"><img alt="" src="img/' + k + '.webp?v=4" decoding="async"></div></div><div class="tg2">—</div>';
     layer.appendChild(el); actors[k] = {k, el, tl: el.querySelector('.tl'), x: c.home[0], y: c.home[1], tx: c.home[0], ty: c.home[1], c: c.c, task: null, tilt: 0, vx: 0, vy: 0, mv: false, ph: Math.random() * 6, pulseAt: 2 + Math.random() * 5, pulseOff: 0, spark: 0, trail: 0, wob: 0};
     el.addEventListener('pointerdown', ev => { ev.stopPropagation(); info(k); });
   }
