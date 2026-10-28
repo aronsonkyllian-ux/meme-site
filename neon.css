@@ -167,3 +167,8 @@ a{color:var(--cy)}
 @media(min-width:960px){.ag .kv{font-size:20px}.ag .ku{font-size:10.5px}.ch .tg2{font-size:12px}}
 @media(max-width:699px){.ch .tg2{font-size:10px;padding:1px 6px}.mi{font-size:12px;padding:0 14px}}
 @media(prefers-reduced-motion:reduce){.mqt{animation:none;overflow-x:auto}.mq{overflow-x:auto}}
+
+/* ===== v4 : personnages dessinés (canvas), icônes de cartes ===== */
+.ag .ico{width:44px;height:44px;display:block}
+@media(min-width:960px){.ag .ico{width:62px;height:62px}}
+.ag .ico{filter:drop-shadow(0 0 5px var(--c))}
