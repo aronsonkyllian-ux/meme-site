@@ -120,6 +120,9 @@ function renderAgents() {
   set('sentinel', rk ? 'risque ouvert ' + num(rp.pct_equite) + ' % de l\'équité (plafond d\'observation ' + num(rp.plafond_observation_pct, 0) + ' %)' + (co ? ' · cohérence ' + (co.payload && co.payload.sain ? 'OK' : 'à vérifier') : '') : '—');
   const g = D.ghosts, n = g && ok(g.seuil_lecture) ? g.seuil_lecture : 30;
   set('research', g && Array.isArray(g.carnets) ? g.carnets.length + ' carnets fantômes · ' + g.carnets.reduce((a, c) => a + (c.clos || 0), 0) + ' trades clos sur ' + n + ' requis · non concluant' + age('RESEARCH') : '—');
+  const nP = D.pos ? D.pos.length : null, nCar = g && Array.isArray(g.carnets) ? g.carnets.length : null, nClos = g && Array.isArray(g.carnets) ? g.carnets.reduce((a, c) => a + (c.clos || 0), 0) : 0;
+  const KV = {scout: [cyc && ok(cyc.n_anomalies) ? String(cyc.n_anomalies) : '—', 'candidats'], trader: [nP === null ? '—' : String(nP), 'positions'], sentinel: [rk && ok(rp.pct_equite) ? num(rp.pct_equite) + ' %' : '—', 'risque'], research: [nCar === null ? '—' : String(nCar), 'carnets · ' + nClos + ' clos'], arbitre: [ok(lastEq()) ? nf({style: 'currency', currency: 'EUR', maximumFractionDigits: 0}).format(lastEq()) : '—', 'capital']};
+  for (const k in KV) { document.querySelectorAll('[data-kv="' + k + '"]').forEach(e => { e.textContent = KV[k][0]; }); document.querySelectorAll('[data-ku="' + k + '"]').forEach(e => { e.textContent = KV[k][1]; }); document.querySelectorAll('.ch[data-k="' + k + '"] .tg2').forEach(e => { e.textContent = KV[k][0] + ' ' + KV[k][1].split(' · ')[0]; }); }
   const dv = lastEv('ARBITRE', 'decision_verrou'), de = lastEv('ARBITRE', 'decision_entree');
   const dd = [dv, de].filter(Boolean).sort((a, z) => z.ts - a.ts)[0];
   set('arbitre', dd ? 'dernière décision : ' + (dd.kind === 'decision_verrou' ? 'verrou de profit ' + sym(dd.market) + ' (' + (dd.payload.statut || '—') + ')' : 'entrée ' + sym(dd.market) + ' ' + (dd.payload.statut || '—')) + ' · il y a ' + ageStr(now - dd.ts) : 'aucune décision récente');
@@ -284,25 +287,26 @@ const FONT = (n, w = 600) => w + ' ' + n + 'px ui-sans-serif,system-ui,sans-seri
 const CH = {
   scout: {c: COL.cy, name: 'SCOUT', home: [262, 372], s: 150, d: '0s'}, trader: {c: COL.mg, name: 'TRADER', home: [512, 322], s: 150, d: '-1.1s'},
   sentinel: {c: COL.li, name: 'SENTINEL', home: [762, 372], s: 150, d: '-2.2s'}, research: {c: COL.vi, name: 'RESEARCH', home: [772, 590], s: 150, d: '-.6s'}, arbitre: {c: COL.go, name: 'ARBITRE', home: [252, 590], s: 150, d: '-1.7s'}};
-const SPOT = {scout: [392, 372], sentinel: [634, 372], trader: [512, 650], arbitre: [428, 482], research: [598, 482]};
+const SPOT = {scout: [372, 382], sentinel: [654, 382], trader: [512, 650], arbitre: [428, 484], research: [598, 484]};
+const LIVE = {price: {}, ts: 0};
 
 function Floor() {
   const room = $('room'), cv = $('fc'), ctx = cv.getContext('2d'), layer = $('chars'), bub = $('bub'), stage = $('stage');
-  let S = 1, dpr = 1, running = false, raf = 0, last = 0, T = 0, pool = [], cyc = null, seen = 0, queue = [], qi = 0, active = [], nextAt = 3, replayAt = 0, tag = 'rejoue le dernier cycle', infoUntil = 0;
-  const actors = {};
+  let S = 1, dpr = 1, running = false, raf = 0, last = 0, T = 0, pool = [], cyc = null, seen = 0, queue = [], qi = 0, nextAt = 3, replayAt = 0, tag = 'rejoue le dernier cycle', infoUntil = 0;
+  const actors = {}; let kf = 1;
   for (const k in CH) {
     const c = CH[k], el = document.createElement('div'); el.className = 'ch'; el.dataset.k = k; el.style.setProperty('--c', c.c); el.style.setProperty('--d', c.d);
-    el.innerHTML = '<div class="sh"></div><div class="bb"><div class="ring"></div><img alt="" src="img/' + k + '.webp?v=1" decoding="async"></div>';
-    layer.appendChild(el); actors[k] = {k, el, x: c.home[0], y: c.home[1], tx: c.home[0], ty: c.home[1], c: c.c, busy: false, ph: Math.random() * 6};
+    el.innerHTML = '<div class="sh"></div><div class="bb"><div class="ring"></div><div class="tl"><img alt="" src="img/' + k + '.webp?v=3" decoding="async"></div></div><div class="tg2">—</div>';
+    layer.appendChild(el); actors[k] = {k, el, tl: el.querySelector('.tl'), x: c.home[0], y: c.home[1], tx: c.home[0], ty: c.home[1], c: c.c, task: null, tilt: 0, vx: 0, vy: 0, mv: false, ph: Math.random() * 6, pulseAt: 2 + Math.random() * 5, pulseOff: 0, spark: 0, trail: 0, wob: 0};
     el.addEventListener('pointerdown', ev => { ev.stopPropagation(); info(k); });
   }
   function layoutF() {
-    const w = room.clientWidth; if (!w) return; S = w / 1024; dpr = Math.min(window.devicePixelRatio || 1, innerWidth < 700 ? 1.75 : 2);
+    const w = room.clientWidth; if (!w) return; S = w / 1024; dpr = Math.min(window.devicePixelRatio || 1, innerWidth < 700 ? 1.6 : 2);
     cv.width = Math.round(w * dpr); cv.height = Math.round(w * 0.75 * dpr);
-    const kf = innerWidth < 700 ? 1.28 : 1; for (const k in CH) { actors[k].el.style.setProperty('--s', CH[k].s * S * kf + 'px'); }
-    place(); if (!running) drawF(0);
+    kf = innerWidth < 700 ? 1.28 : 1; for (const k in CH) { actors[k].el.style.setProperty('--s', CH[k].s * S * kf + 'px'); }
+    place(); if (!running) drawF(T);
   }
-  function place() { for (const k in actors) { const a = actors[k]; a.el.style.transform = 'translate3d(' + (a.x * S).toFixed(1) + 'px,' + (a.y * S).toFixed(1) + 'px,0)'; } }
+  function place() { for (const k in actors) { const a = actors[k]; a.el.style.transform = 'translate3d(' + (a.x * S).toFixed(1) + 'px,' + ((a.y + a.wob) * S).toFixed(1) + 'px,0)'; a.el.style.zIndex = Math.round(a.y); a.tl.style.transform = 'rotate(' + a.tilt.toFixed(1) + 'deg) scale(' + (1 + (a.task ? .06 : .015 * Math.sin(T * 3.3 + a.ph))).toFixed(3) + ')'; } }
   const ro = new ResizeObserver(layoutF); ro.observe(room);
 
   /* ---- données pour les écrans ---- */
@@ -315,7 +319,13 @@ function Floor() {
   }
   const KC = {keep: COL.li, watch: COL.go, drop: COL.mg, sig: COL.cy};
   const risk = () => { const e = lastEv('SENTINEL', 'risque_agrege'); return e ? e.payload : null; };
-  function screen(key, fn) { const q = QUADS[key]; ctx.save(); ctx.transform(...q.m); ctx.beginPath(); ctx.rect(0, 0, q.lw, q.lh); ctx.clip(); ctx.fillStyle = 'rgba(2,6,16,.96)'; ctx.fillRect(0, 0, q.lw, q.lh); fn(ctx, q.lw, q.lh, T); const g = ctx.createLinearGradient(0, 0, q.lw, q.lh); g.addColorStop(0, 'rgba(255,255,255,.07)'); g.addColorStop(.35, 'rgba(255,255,255,0)'); ctx.fillStyle = g; ctx.fillRect(0, 0, q.lw, q.lh); ctx.restore(); }
+  const SCR = {sc: 'scout', se: 'sentinel', ar: 'arbitre', re: 'research', tr: 'trader'};
+  function screen(key, fn) {
+    const q = QUADS[key]; ctx.save(); ctx.transform(...q.m); ctx.beginPath(); ctx.rect(0, 0, q.lw, q.lh); ctx.clip(); ctx.fillStyle = 'rgba(2,6,16,.96)'; ctx.fillRect(0, 0, q.lw, q.lh); fn(ctx, q.lw, q.lh, T);
+    const g = ctx.createLinearGradient(0, 0, q.lw, q.lh); g.addColorStop(0, 'rgba(255,255,255,.07)'); g.addColorStop(.35, 'rgba(255,255,255,0)'); ctx.fillStyle = g; ctx.fillRect(0, 0, q.lw, q.lh);
+    const r = SCR[key.slice(0, 2)]; if (r) { const al = Math.max(roleFlash[r], actors[r].task ? .22 : .08 + .05 * Math.sin(T * 2 + actors[r].ph)); ctx.globalAlpha = al; ctx.fillStyle = CH[r].c; ctx.fillRect(0, 0, q.lw, q.lh * .5); ctx.globalAlpha = Math.min(1, al * 1.6); ctx.strokeStyle = CH[r].c; ctx.lineWidth = 2.5; ctx.strokeRect(1.2, 1.2, q.lw - 2.4, q.lh - 2.4); ctx.globalAlpha = 1; }
+    ctx.restore();
+  }
   const lbl = (c, t, x, y, col, n = 8, al = 'left') => { c.font = FONT(n); c.textAlign = al; c.textBaseline = 'top'; c.fillStyle = col; c.fillText(t, x, y); };
 
   /* Scout : radar des candidats courants */
@@ -345,7 +355,7 @@ function Floor() {
     c.lineCap = 'round'; c.lineWidth = 9; c.strokeStyle = 'rgba(255,255,255,.08)'; c.beginPath(); c.arc(cx, cy, R, Math.PI, TAU); c.stroke();
     const col = ratio < .6 ? COL.li : ratio < .9 ? COL.go : COL.mg, a1 = Math.PI + Math.PI * ratio * (RM ? 1 : (.96 + .04 * Math.sin(t * 2))); c.strokeStyle = col; c.shadowColor = col; c.shadowBlur = 8; c.beginPath(); c.arc(cx, cy, R, Math.PI, a1); c.stroke(); c.shadowBlur = 0;
     c.strokeStyle = '#fff'; c.lineWidth = 2; c.beginPath(); c.moveTo(cx, cy); c.lineTo(cx + Math.cos(a1) * (R - 12), cy + Math.sin(a1) * (R - 12)); c.stroke(); c.fillStyle = '#fff'; c.beginPath(); c.arc(cx, cy, 3, 0, TAU); c.fill();
-    lbl(c, r && ok(r.pct_equite) ? num(r.pct_equite) + ' %' : '—', cx, cy - R * .55 - 8, '#fff', 14, 'center'); lbl(c, 'plafond ' + (r && ok(r.plafond_observation_pct) ? num(r.plafond_observation_pct, 0) + ' %' : '—'), cx, cy + 5, COL.mut, 8, 'center');
+    lbl(c, r && ok(r.pct_equite) ? num(r.pct_equite) + ' %' : '—', cx, cy - R * .55 - 10, '#fff', 19, 'center'); lbl(c, 'plafond ' + (r && ok(r.plafond_observation_pct) ? num(r.plafond_observation_pct, 0) + ' %' : '—'), cx, cy + 5, COL.mut, 8, 'center');
   }
   function dStops(c, w, h, t) {
     const P = D.pos || [], rh = (h - 8) / Math.max(5, P.length);
@@ -395,11 +405,12 @@ function Floor() {
   /* Trader : bougies 1 h de la position suivie (entrée + stop) et P&L des positions */
   function dPosChart(c, w, h, t) {
     const P = D.pos || []; if (!P.length) { lbl(c, '—', w / 2, h / 2 - 5, COL.mut, 12, 'center'); return; }
-    const p = P[Math.floor(t / 9) % P.length], cd = D.candles[p.m], fade = Math.min(1, ((t % 9)) * 2.5); c.globalAlpha = fade;
+    const p = P[Math.floor(t / 9) % P.length], cd = D.candles[p.m], fade = Math.min(1, ((t % 9)) * 2.5), lv = LIVE.price[p.m]; c.globalAlpha = fade;
     const col = p.pnl === null ? COL.mut : p.pnl >= 0 ? COL.g : COL.r;
-    lbl(c, p.s, 5, 3, '#fff', 11); lbl(c, p.pnl === null ? '—' : (p.pnl > 0 ? '+' : '−') + Math.abs(p.pnl).toFixed(2).replace('.', ',') + ' €', w - 5, 4, col, 10, 'right');
-    const x0 = 4, y0 = 20, ww = w - 8, hh = h - 25;
+    lbl(c, p.s, 5, 2, '#fff', 14); lbl(c, p.pnl === null ? '—' : (p.pnl > 0 ? '+' : '−') + Math.abs(p.pnl).toFixed(1).replace('.', ',') + ' €', w - 5, 3, col, 13, 'right');
+    const x0 = 4, y0 = 22, ww = w - 8, hh = h - 27;
     let cs = cd && cd.length ? cd.filter(k => k[0] >= p.entry_ts - 6 * 3600e3) : null; if (cs && cs.length < 2) cs = cd.slice(-12);
+    if (cs && cs.length && ok(lv)) { cs = cs.slice(); const l = cs[cs.length - 1].slice(); l[4] = lv; l[2] = Math.max(l[2], lv); l[3] = Math.min(l[3], lv); cs[cs.length - 1] = l; }
     const ys = [p.entry].concat(p.sl ? [p.sl] : [], cs ? cs.map(k => [k[2], k[3]]).flat() : [], p.mark ? [p.mark] : []).filter(ok); let lo = Math.min(...ys), hi = Math.max(...ys); const pd = (hi - lo) * .1 || hi * .01; lo -= pd; hi += pd;
     const Y = v => y0 + (1 - (v - lo) / (hi - lo)) * hh;
     if (cs && cs.length > 1) {
@@ -407,8 +418,9 @@ function Floor() {
       cs.forEach(k => { const up = k[4] >= k[1], cc = up ? COL.g : COL.r, x = X(k[0]); c.strokeStyle = cc; c.fillStyle = cc; c.lineWidth = .8; c.beginPath(); c.moveTo(x, Y(k[2])); c.lineTo(x, Y(k[3])); c.stroke(); c.fillRect(x - bw / 2, Math.min(Y(k[1]), Y(k[4])), bw, Math.max(1, Math.abs(Y(k[1]) - Y(k[4])))); });
       if (p.entry_ts >= t0) { c.strokeStyle = 'rgba(255,255,255,.4)'; c.setLineDash([2, 2]); c.beginPath(); c.moveTo(X(p.entry_ts), y0); c.lineTo(X(p.entry_ts), y0 + hh); c.stroke(); c.setLineDash([]); }
     } else lbl(c, 'bougies indisponibles', w / 2, h / 2, COL.mut, 8, 'center');
-    const hl = (v, cc, tx) => { if (!ok(v) || v < lo || v > hi) return; c.strokeStyle = cc; c.lineWidth = 1; c.setLineDash([4, 3]); c.beginPath(); c.moveTo(x0, Y(v)); c.lineTo(x0 + ww, Y(v)); c.stroke(); c.setLineDash([]); lbl(c, tx, x0 + ww, Y(v) - 8, cc, 7, 'right'); };
-    hl(p.entry, '#e8f0ff', 'entrée'); hl(p.sl, COL.r, 'stop'); if (p.mark) hl(p.mark, COL.cy, '');
+    const hl = (v, cc, tx) => { if (!ok(v) || v < lo || v > hi) return; c.strokeStyle = cc; c.lineWidth = 1; c.setLineDash([4, 3]); c.beginPath(); c.moveTo(x0, Y(v)); c.lineTo(x0 + ww, Y(v)); c.stroke(); c.setLineDash([]); lbl(c, tx, x0 + ww, Y(v) - 10, cc, 9, 'right'); };
+    hl(p.entry, '#e8f0ff', 'entrée'); hl(p.sl, COL.r, 'stop'); const mk = ok(lv) ? lv : p.mark; if (mk) hl(mk, COL.cy, '');
+    if (cs && cs.length > 1) { const sx = x0 + ((t * .22) % 1) * ww; c.fillStyle = 'rgba(39,230,255,.10)'; c.fillRect(sx - 6, y0, 12, hh); c.fillStyle = 'rgba(255,255,255,' + (.25 + .25 * Math.sin(t * 5)) + ')'; c.fillRect(x0 + ww - 3, y0, 3, hh); }
     c.globalAlpha = 1;
   }
   function dPosPnl(c, w, h, t) {
@@ -440,36 +452,90 @@ function Floor() {
     if (f !== null) { const g = c.createLinearGradient(0, 0, w, h); g.addColorStop(0, COL.li); g.addColorStop(1, COL.cy); c.strokeStyle = g; c.shadowColor = COL.li; c.shadowBlur = 8; c.beginPath(); c.arc(cx, cy, R, -Math.PI / 2, -Math.PI / 2 + TAU * f); c.stroke(); c.shadowBlur = 0; }
     lbl(c, f === null ? '—' : Math.round(f * 100) + ' %', cx, cy - 8, '#fff', 15, 'center'); lbl(c, 'investi', cx, cy + 8, COL.mut, 8, 'center');
   }
-  function holo(t) {
-    const x = 512, y = 408; ctx.save(); ctx.globalCompositeOperation = 'lighter';
-    for (let i = 0; i < 3; i++) { const k = ((t * .5 + i / 3) % 1); ctx.strokeStyle = 'rgba(' + (i % 2 ? '255,61,216' : '39,230,255') + ',' + (.55 * (1 - k)) + ')'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(x, y - k * 70, 64 - k * 18, 21 - k * 6, 0, 0, TAU); ctx.stroke(); }
-    const g = ctx.createLinearGradient(0, y - 90, 0, y); g.addColorStop(0, 'rgba(39,230,255,0)'); g.addColorStop(1, 'rgba(39,230,255,.22)'); ctx.fillStyle = g; ctx.fillRect(x - 40, y - 90, 80, 90); ctx.restore();
+  /* ---- vie : effets, tâches, collisions ---- */
+  let lowQ = false, fpsN = 0, fpsT = 0, slow = 0;
+  const roleFlash = {scout: 0, sentinel: 0, arbitre: 0, research: 0, trader: 0};
+  let ringFlash = 0, popAt = 1.5, popI = 0;
+  const parts = [], fx = [], pops = [], tasks = [];
+  const dust = Array.from({length: innerWidth < 700 ? 30 : 55}, () => ({x: Math.random() * 1024, y: 130 + Math.random() * 600, sp: 6 + Math.random() * 14, ph: Math.random() * 6, r: .9 + Math.random() * 1.5, c: Math.random() < .5 ? '39,230,255' : '255,61,216'}));
+  const FS = () => Math.max(13, 11.5 / S);
+  const rr = (c, x, y, w, h, r) => { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); };
+  const pnlTxt = p => p.pnl === null || p.pnl === undefined ? '—' : (p.pnl > 0 ? '+' : p.pnl < 0 ? '−' : '') + Math.abs(p.pnl).toFixed(1).replace('.', ',') + ' €';
+  const pnlCol = p => p.pnl === null || p.pnl === undefined ? COL.mut : p.pnl >= 0 ? COL.g : COL.r;
+  function chip(txt, x, y, col, k, al) {
+    const f = FS() * k; ctx.font = FONT(f, 700); const w = ctx.measureText(txt).width + f * 1, h = f * 1.5;
+    ctx.save(); ctx.globalAlpha = al; rr(ctx, x - w / 2, y - h / 2, w, h, h / 2); ctx.fillStyle = 'rgba(5,8,22,.88)'; ctx.fill(); ctx.strokeStyle = col; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.fillStyle = col; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(txt, x, y + f * .06); ctx.restore();
   }
-  /* faisceaux entre agents (événements réels rejoués) */
+  const quad = (a, b, c, u) => (1 - u) * (1 - u) * a + 2 * (1 - u) * u * b + u * u * c;
+  const spark = (x, y, col, up) => { if (parts.length < 90) parts.push({x, y, vx: (Math.random() - .5) * 26, vy: up ? -18 - Math.random() * 26 : (Math.random() - .5) * 18, l: 1, c: col, r: 1.4 + Math.random() * 1.6}); };
+  const ringFx = (x, y, col, big) => { if (fx.length < 12) fx.push({x, y, t: T, c: col, big}); };
+
+  function drawDust(t) {
+    if (lowQ && !dust._cut) { dust.length = Math.min(dust.length, 12); dust._cut = 1; }
+    for (const d of dust) { const y = 730 - ((730 - d.y + t * d.sp) % 600), x = d.x + Math.sin(t * .5 + d.ph) * 14; ctx.globalAlpha = .12 + .3 * (.5 + .5 * Math.sin(t * 1.7 + d.ph)); ctx.fillStyle = 'rgb(' + d.c + ')'; ctx.fillRect(x, y, d.r * 2, d.r * 2); }
+    ctx.globalAlpha = 1;
+  }
+  const STREAMS = [['scout', [330, 345], [400, 430], [462, 428]], ['sentinel', [700, 345], [630, 430], [565, 428]], ['arbitre', [330, 520], [400, 478], [460, 460]], ['research', [700, 520], [630, 478], [565, 460]], ['trader', [512, 530], [512, 500], [512, 470]]];
+  function streams(t) {
+    ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.lineCap = 'round';
+    STREAMS.forEach(([k, a, m, b], i) => {
+      const c = k === 'trader' ? COL.mg : CH[k].c, busy = !!actors[k].task, sp = busy ? .55 : .26;
+      ctx.globalAlpha = .13; ctx.strokeStyle = c; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.quadraticCurveTo(m[0], m[1], b[0], b[1]); ctx.stroke();
+      for (let j = 0; j < 2; j++) {
+        const u0 = (t * sp + i * .23 + j * .5) % 1;
+        for (let q = 0; q < 4; q++) { const u = Math.max(0, u0 - q * .035), x = quad(a[0], m[0], b[0], u), y = quad(a[1], m[1], b[1], u); ctx.globalAlpha = (1 - q * .24) * (busy ? .95 : .7); ctx.fillStyle = q ? c : '#fff'; ctx.beginPath(); ctx.arc(x, y, 3.4 - q * .6, 0, TAU); ctx.fill(); }
+      }
+    });
+    ctx.restore();
+  }
+  function orbit(t, front) {
+    const P = D.pos || []; if (!P.length) return;
+    P.forEach((p, i) => { const a = t * .32 + i * TAU / P.length, f = Math.sin(a) > 0; if (f !== front) return; const x = 512 + Math.cos(a) * 118, y = 398 + Math.sin(a) * 38, col = pnlCol(p); chip(p.s + ' ' + pnlTxt(p), x, y, col, .7, f ? .96 : .5); });
+  }
+  function holo(t) {
+    const x = 512, y = 408; orbit(t, false); ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    for (let i = 0; i < 3; i++) { const k = ((t * .5 + i / 3) % 1); ctx.strokeStyle = 'rgba(' + (i % 2 ? '255,61,216' : '39,230,255') + ',' + (.55 * (1 - k)) + ')'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(x, y - k * 70, 64 - k * 18, 21 - k * 6, 0, 0, TAU); ctx.stroke(); }
+    const g = ctx.createLinearGradient(0, y - 90, 0, y); g.addColorStop(0, 'rgba(39,230,255,0)'); g.addColorStop(1, 'rgba(39,230,255,.22)'); ctx.fillStyle = g; ctx.fillRect(x - 40, y - 90, 80, 90);
+    ctx.lineWidth = 2.5; ctx.setLineDash([16, 12]); ctx.lineDashOffset = -t * 34; ctx.strokeStyle = 'rgba(39,230,255,.7)'; ctx.beginPath(); ctx.ellipse(x, y + 4, 80, 26, 0, 0, TAU); ctx.stroke();
+    ctx.setLineDash([4, 12]); ctx.lineDashOffset = t * 24; ctx.strokeStyle = 'rgba(255,61,216,.6)'; ctx.beginPath(); ctx.ellipse(x, y + 4, 100, 33, 0, 0, TAU); ctx.stroke(); ctx.setLineDash([]);
+    if (ringFlash > .02) { ctx.globalAlpha = ringFlash; ctx.strokeStyle = COL.go; ctx.lineWidth = 4; ctx.beginPath(); ctx.ellipse(x, y + 4, 90 + (1 - ringFlash) * 30, 29 + (1 - ringFlash) * 10, 0, 0, TAU); ctx.stroke(); }
+    ctx.restore(); orbit(t, true);
+  }
   function beams(t) {
-    for (const s of active) if (s.beam && s.ph === 'dwell') {
-      const A = actors[s.who], B = actors[s.beam]; ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.strokeStyle = A.c; ctx.lineWidth = 2; ctx.shadowColor = A.c; ctx.shadowBlur = 12; ctx.setLineDash([6, 7]); ctx.lineDashOffset = -t * 40;
+    for (const s of tasks) if (s.real && s.beam && s.ph === 'dwell') {
+      const A = actors[s.who], B = actors[s.beam]; ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.strokeStyle = A.c; ctx.lineWidth = 2.4; ctx.shadowColor = A.c; ctx.shadowBlur = 12; ctx.setLineDash([6, 7]); ctx.lineDashOffset = -t * 40;
       const mx = (A.x + B.x) / 2, my = Math.min(A.y, B.y) - 40; ctx.beginPath(); ctx.moveTo(A.x, A.y - 10); ctx.quadraticCurveTo(mx, my, B.x, B.y - 10); ctx.stroke(); ctx.setLineDash([]);
-      const k = clamp((t - s.t0) / 1.1, 0, 1), bx = (1 - k) * (1 - k) * A.x + 2 * (1 - k) * k * mx + k * k * B.x, by = (1 - k) * (1 - k) * (A.y - 10) + 2 * (1 - k) * k * my + k * k * (B.y - 10);
+      const k = clamp((t - s.t0) / 1.1, 0, 1), bx = quad(A.x, mx, B.x, k), by = quad(A.y - 10, my, B.y - 10, k);
       ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(bx, by, 5, 0, TAU); ctx.fill(); ctx.fillStyle = A.c; ctx.globalAlpha = .6; ctx.beginPath(); ctx.arc(bx, by, 11, 0, TAU); ctx.fill(); ctx.restore();
     }
   }
-  /* lignes de constellation : chaque esprit relié à l'anneau holographique central (suivent les déplacements) */
   function links(t) {
     const cx = 512, cy = 412; ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.lineCap = 'round';
-    const ks = Object.keys(actors), pts = [];
-    ks.forEach((k, i) => {
+    Object.keys(actors).forEach((k, i) => {
       const a = actors[k], ax = a.x, ay = a.y + 28, mx = (ax + cx) / 2 + (ax < cx ? -1 : 1) * 18, my = (ay + cy) / 2 + 26;
-      ctx.strokeStyle = a.c; ctx.shadowColor = a.c; ctx.shadowBlur = 10; ctx.lineWidth = 1.5; ctx.globalAlpha = .55; ctx.beginPath(); ctx.moveTo(ax, ay); ctx.quadraticCurveTo(mx, my, cx, cy); ctx.stroke();
-      ctx.shadowBlur = 0;
-      for (let j = 1; j <= 3; j++) { const u = j / 4, x = (1 - u) * (1 - u) * ax + 2 * (1 - u) * u * mx + u * u * cx, y = (1 - u) * (1 - u) * ay + 2 * (1 - u) * u * my + u * u * cy, tw = .55 + .45 * Math.sin(t * 2.2 + i * 1.7 + j * 2.3); ctx.globalAlpha = tw; ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(x, y, 2.1, 0, TAU); ctx.fill(); ctx.globalAlpha = tw * .5; ctx.fillStyle = a.c; ctx.beginPath(); ctx.arc(x, y, 5, 0, TAU); ctx.fill(); }
-      const u = ((t * .22 + i * .2) % 1), x = (1 - u) * (1 - u) * ax + 2 * (1 - u) * u * mx + u * u * cx, y = (1 - u) * (1 - u) * ay + 2 * (1 - u) * u * my + u * u * cy; ctx.globalAlpha = .9; ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(x, y, 2.6, 0, TAU); ctx.fill();
-      pts.push([ax, ay]);
+      ctx.strokeStyle = a.c; ctx.shadowColor = a.c; ctx.shadowBlur = 8; ctx.lineWidth = 1.5; ctx.globalAlpha = .45; ctx.beginPath(); ctx.moveTo(ax, ay); ctx.quadraticCurveTo(mx, my, cx, cy); ctx.stroke(); ctx.shadowBlur = 0;
+      for (let j = 1; j <= 3; j++) { const u = j / 4, x = quad(ax, mx, cx, u), y = quad(ay, my, cy, u), tw = .55 + .45 * Math.sin(t * 2.2 + i * 1.7 + j * 2.3); ctx.globalAlpha = tw; ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(x, y, 2.1, 0, TAU); ctx.fill(); }
+      const u = ((t * .22 + i * .2) % 1); ctx.globalAlpha = .9; ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(quad(ax, mx, cx, u), quad(ay, my, cy, u), 2.6, 0, TAU); ctx.fill();
     });
-    /* liaisons entre voisins (constellation) */
-    ctx.globalAlpha = .22; ctx.lineWidth = 1; ctx.strokeStyle = '#9fb4ff'; ctx.setLineDash([2, 6]);
+    ctx.globalAlpha = .2; ctx.lineWidth = 1; ctx.strokeStyle = '#9fb4ff'; ctx.setLineDash([2, 6]);
     [['scout', 'trader'], ['trader', 'sentinel'], ['scout', 'arbitre'], ['sentinel', 'research'], ['arbitre', 'research']].forEach(([p, q]) => { ctx.beginPath(); ctx.moveTo(actors[p].x, actors[p].y + 28); ctx.lineTo(actors[q].x, actors[q].y + 28); ctx.stroke(); });
     ctx.restore();
+  }
+  function fxDraw(t) {
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    for (let i = fx.length - 1; i >= 0; i--) { const f = fx[i], k = (t - f.t) / (f.big ? 1.3 : .9); if (k >= 1) { fx.splice(i, 1); continue; } ctx.globalAlpha = (1 - k) * .85; ctx.strokeStyle = f.c; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(f.x, f.y + 40, 20 + k * (f.big ? 95 : 60), 7 + k * (f.big ? 32 : 20), 0, 0, TAU); ctx.stroke(); }
+    for (const k in actors) { const a = actors[k], tk = a.task; if (tk && tk.orb) { const x = a.x + 46, y = a.y - 4 + Math.sin(t * 6) * 4, g = ctx.createRadialGradient(x, y, 0, x, y, 20); g.addColorStop(0, 'rgba(255,255,255,.95)'); g.addColorStop(.35, CH[k].c); g.addColorStop(1, 'rgba(0,0,0,0)'); ctx.globalAlpha = .95; ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, 20, 0, TAU); ctx.fill(); } }
+    for (let i = parts.length - 1; i >= 0; i--) { const p = parts[i]; if (p.l <= 0) { parts.splice(i, 1); continue; } ctx.globalAlpha = Math.min(1, p.l) * .9; ctx.fillStyle = p.c; ctx.beginPath(); ctx.arc(p.x, p.y, p.r * (.5 + p.l * .5), 0, TAU); ctx.fill(); }
+    ctx.restore();
+    for (let i = pops.length - 1; i >= 0; i--) { const p = pops[i], age = t - p.t; if (age > 2.6) { pops.splice(i, 1); continue; } chip(p.txt, p.x, p.y - age * 42, p.c, .95, Math.min(1, age * 4) * (1 - age / 2.6)); }
+  }
+  function stepFx(dt) {
+    for (const k in roleFlash) roleFlash[k] = Math.max(0, roleFlash[k] - dt * .8);
+    ringFlash = Math.max(0, ringFlash - dt * .9);
+    for (const p of parts) { p.l -= dt * 1.5; p.x += p.vx * dt; p.y += p.vy * dt; }
+    const P = D.pos || [];
+    if (T >= popAt && P.length) { popAt = T + 2.3; const p = P[popI++ % P.length]; if (p.pnl !== null && p.pnl !== undefined) pops.push({t: T, txt: p.s + ' ' + pnlTxt(p), c: pnlCol(p), x: 512 + (Math.random() - .5) * 50, y: 520}); if (pops.length > 4) pops.shift(); }
   }
   function drawF(t) {
     const k = cv.width / 1024; ctx.setTransform(k, 0, 0, k, 0, 0); ctx.clearRect(0, 0, 1024, 768);
@@ -479,10 +545,10 @@ function Floor() {
     screen('reC', dGhostBars); screen('reL', dDonut); screen('reR', dGhostPnl);
     screen('trL', dPosChart); screen('trR', dPosPnl);
     screen('wall', dWall); screen('wL', dTarget); screen('wR', dExpo);
-    links(t); holo(t); beams(t);
+    streams(t); links(t); holo(t); beams(t); fxDraw(t); drawDust(t);
   }
 
-  /* ---- scènes : rejouent les événements réels du dernier cycle (team.json) ---- */
+  /* ---- tâches des esprits : trajets réels (rejeu du journal) ou ambiants (sans texte) ---- */
   const ROLE_WHO = {SCANNER: 'scout', SCOUT: 'scout', SENTINEL: 'sentinel', TRADER: 'trader', ARBITRE: 'arbitre', RESEARCH: 'research'};
   const ORD = {SCANNER: 0, SCOUT: 1, SENTINEL: 2, ARBITRE: 3, TRADER: 4, RESEARCH: 5};
   function msg(e) {
@@ -518,60 +584,121 @@ function Floor() {
     queue = pick.slice(0, 9).map(({e}) => { const who = ROLE_WHO[e.role], beam = who === 'trader' ? 'arbitre' : 'trader'; return {who, beam, txt: msg(e), carry: who === 'scout', ts: e.ts, role: e.role}; });
     qi = 0;
   }
-  function startScene(sc) {
-    const a = actors[sc.who]; a.busy = true; const s = {who: sc.who, beam: sc.beam, txt: sc.txt, ph: 'go', t0: T, carry: sc.carry, ts: sc.ts};
-    const sp = SPOT[sc.who] || CH[sc.who].home; a.tx = sp[0]; a.ty = sp[1]; active.push(s); nextAt = T + 2.9; a.el.classList.add('act');
-    say(sc.who, sc.txt, sc.ts, false);
+  const home = k => CH[k].home;
+  function mkTask(who, wps, o) { return Object.assign({who, wps, i: 0, ph: 'go', t0: T, real: false}, o || {}); }
+  function gotoWp(tk) { const w = tk.wps[tk.i], a = actors[tk.who]; a.tx = w.x; a.ty = w.y; tk.ph = 'go'; tk.t0 = T; }
+  function startTask(tk) { const a = actors[tk.who]; a.task = tk; tasks.push(tk); gotoWp(tk); if (tk.real) { a.el.classList.add('act'); say(tk.who, tk.txt, tk.ts, false); } }
+  function endTask(tk) { const a = actors[tk.who]; a.tx = home(tk.who)[0]; a.ty = home(tk.who)[1]; tk.ph = 'home'; tk.t0 = T; tk.orb = false; a.el.classList.remove('act'); }
+  function dropTask(tk) { const i = tasks.indexOf(tk); if (i >= 0) tasks.splice(i, 1); const a = actors[tk.who]; if (a.task === tk) a.task = null; }
+  function arrive(tk) {
+    const a = actors[tk.who], w = tk.wps[tk.i]; ringFx(a.x, a.y, a.c, false);
+    if (tk.real) { roleFlash[tk.who] = 1; if (tk.beam) roleFlash[tk.beam] = .85; }
+    if (w.fl) roleFlash[w.fl] = 1;
+    if (w.ring) ringFlash = 1;
+    if (w.shield) ringFx(a.x, a.y, a.c, true);
+    if (w.drop && tk.orb) { tk.orb = false; for (let i = 0; i < 14; i++) spark(a.x + 46, a.y, a.c, false); roleFlash.trader = 1; }
   }
-  function endScene(s) { const a = actors[s.who]; a.tx = CH[s.who].home[0]; a.ty = CH[s.who].home[1]; s.ph = 'back'; s.t0 = T; a.el.classList.remove('act'); }
+  const AMB = {
+    scout: () => ({wps: [{x: 372, y: 378, d: .3}, {x: 424, y: 362, d: .9, drop: 1, fl: 'trader'}], orb: true}),
+    sentinel: () => ({wps: [{x: 660, y: 418, d: .4, shield: 1}, {x: 592, y: 506, d: .9, shield: 1}, {x: 668, y: 432, d: .4}]}),
+    research: () => ({wps: [{x: 604, y: 506, d: 1, fl: 'research'}, {x: 452, y: 548, d: 1.1}]}),
+    arbitre: () => ({wps: [{x: 456, y: 470, d: 1.1, ring: 1, fl: 'arbitre'}, {x: 380, y: 528, d: .6}]}),
+    trader: () => ({wps: [{x: 604, y: 428, d: .8, fl: 'trader'}, {x: 424, y: 430, d: .9, ring: 1}]})
+  };
+  let ambAt = 3.5, ambLast = '';
+  function ambient() {
+    if (tasks.length >= (kf > 1 ? 2 : 3)) return; const idle = Object.keys(actors).filter(k => !actors[k].task && k !== ambLast); if (!idle.length) return;
+    const k = idle[Math.floor(Math.random() * idle.length)], d = AMB[k](); ambLast = k; startTask(mkTask(k, d.wps, {orb: !!d.orb}));
+  }
+  function startScene(sc) {
+    const sp = SPOT[sc.who] || home(sc.who); startTask(mkTask(sc.who, [{x: sp[0], y: sp[1], d: 2.5}], {real: true, txt: sc.txt, ts: sc.ts, beam: sc.beam, orb: sc.who === 'scout'})); nextAt = T + 3;
+  }
   function say(who, txt, ts, force) {
     const c = CH[who];
     $('tkWho').textContent = c.name; $('tkWho').style.color = c.c; document.querySelector('#ticker .dot').style.background = c.c; document.querySelector('#ticker .dot').style.boxShadow = '0 0 10px ' + c.c;
     $('tkTxt').textContent = txt; $('tkTag').textContent = ts ? (tag + ' · ' + fmtH(ts) + ' (Paris)') : '';
     document.querySelectorAll('.ag').forEach(el => el.classList.toggle('on', el.dataset.k === who));
-    bub.style.setProperty('--c', c.c); bub.textContent = txt; bub.who = who; bub.classList.add('on'); bub.hidden = false; bubT = T + (force ? 4.5 : 2.6);
+    bub.style.setProperty('--c', c.c); bub.textContent = txt; bub.who = who; bub.classList.add('on'); bub.hidden = false; bubT = T + (force ? 4.5 : 2.8);
   }
   let bubT = 0;
-  function info(k) { const c = CH[k], el = document.querySelector('[data-st="' + k + '"]'); infoUntil = T + 6; nextAt = Math.max(nextAt, T + 5); say(k, el ? el.textContent : '—', 0, true); actors[k].el.classList.add('act'); setTimeout(() => { if (!actors[k].busy) actors[k].el.classList.remove('act'); }, 2500); }
+  function info(k) { const el = document.querySelector('[data-st="' + k + '"]'); infoUntil = T + 6; nextAt = Math.max(nextAt, T + 5); say(k, el ? el.textContent : '—', 0, true); actors[k].el.classList.add('act'); ringFx(actors[k].x, actors[k].y, actors[k].c, true); setTimeout(() => { if (!actors[k].task) actors[k].el.classList.remove('act'); }, 2500); }
+  /* bulle : choisit le côté (haut / gauche / droite / bas) qui recouvre le moins les autres esprits et reste visible */
   function posBub() {
-    if (!bub.who || bub.hidden) return; const a = actors[bub.who], w = room.clientWidth, sr = stage.getBoundingClientRect(), rr = room.getBoundingClientRect(), vl = sr.left - rr.left, vr = vl + sr.width, bw = bub.offsetWidth || 120;
-    const x = clamp(a.x * S, vl + bw / 2 + 4, vr - bw / 2 - 4); bub.style.left = x + 'px'; bub.style.top = Math.max(bub.offsetHeight + 4, (a.y - CH[bub.who].s * (innerWidth < 700 ? .62 : .5)) * S) + 'px'; void w;
+    if (!bub.who || bub.hidden) return; const a = actors[bub.who], sr = stage.getBoundingClientRect(), rb = room.getBoundingClientRect(), vl = sr.left - rb.left, vr = vl + sr.width, vt = 0, vb = sr.height;
+    const bw = bub.offsetWidth || 120, bh = bub.offsetHeight || 30, half = CH[bub.who].s * kf * S / 2, ax = a.x * S, ay = (a.y + a.wob) * S, g = 6;
+    const C = [[ax, ay - half * .9 - g, -50, -100, 'u'], [ax - half * .75 - g, ay - half * .35, -100, -50, 'l'], [ax + half * .75 + g, ay - half * .35, 0, -50, 'r'], [ax, ay + half * .8 + 28, -50, 0, 'd']];
+    let best = null, bs = 1e9;
+    C.forEach((c, i) => {
+      const x = c[0] + c[2] / 100 * bw, y = c[1] + c[3] / 100 * bh; let sc = i * 40;
+      const ox = Math.max(0, vl + 2 - x) + Math.max(0, x + bw - vr + 2), oy = Math.max(0, vt + 2 - y) + Math.max(0, y + bh - vb + 2); sc += (ox + oy) * 30;
+      for (const k in actors) { if (k === bub.who) continue; const o = actors[k], oh = CH[k].s * kf * S / 2, l = o.x * S - oh * .7, t = (o.y + o.wob) * S - oh * .85, w = oh * 1.4, h = oh * 1.55, iw = Math.min(x + bw, l + w) - Math.max(x, l), ih = Math.min(y + bh, t + h) - Math.max(y, t); if (iw > 0 && ih > 0) sc += iw * ih; const tl = o.el.lastChild, tw = (tl.textContent.length * 6.4 + 18), tx = o.x * S - tw / 2, ty = (o.y + o.wob) * S + oh * .8, tiw = Math.min(x + bw, tx + tw) - Math.max(x, tx), tih = Math.min(y + bh, ty + 20) - Math.max(y, ty); if (tiw > 0 && tih > 0) sc += tiw * tih * 1.5; }
+      if (sc < bs) { bs = sc; best = c; }
+    });
+    const c = best, px = clamp(c[0] + c[2] / 100 * bw, vl + 2, vr - bw - 2) - c[2] / 100 * bw; bub.style.left = px.toFixed(1) + 'px'; bub.style.top = c[1].toFixed(1) + 'px'; bub.style.transform = 'translate(' + c[2] + '%,' + c[3] + '%)'; bub.dataset.side = c[4];
+  }
+  function stepActors(dt) {
+    const ks = Object.keys(actors);
+    for (const k of ks) {
+      const a = actors[k], ox = a.x, oy = a.y, f = 1 - Math.exp(-dt * (a.task ? 2.5 : 2));
+      a.x += (a.tx - a.x) * f; a.y += (a.ty - a.y) * f;
+      a._ox = ox; a._oy = oy;
+    }
+    /* évitement doux : ellipse ~120 x 95 autour de chaque esprit */
+    for (let i = 0; i < ks.length; i++) for (let j = i + 1; j < ks.length; j++) {
+      const A = actors[ks[i]], B = actors[ks[j]]; const RX = 124 * (1 + (kf - 1) * .9), RY = 98 * (1 + (kf - 1) * .9); let dx = (A.x - B.x) / RX, dy = (A.y - B.y) / RY, d = Math.hypot(dx, dy);
+      if (d < 1) { if (d < .01) { dx = Math.random() - .5; dy = Math.random() - .5; d = Math.hypot(dx, dy); } const push = (1 - d) * Math.min(1, dt * 6) * .5; A.x += dx / d * RX * push; A.y += dy / d * RY * push; B.x -= dx / d * RX * push; B.y -= dy / d * RY * push; }
+    }
+    for (const k of ks) {
+      const a = actors[k], vx = (a.x - a._ox) / dt, vy = (a.y - a._oy) / dt, sp = Math.hypot(vx, vy); a.mv = sp > 22;
+      const work = !a.task, dw = a.task && a.task.ph === 'dwell';
+      const tt = clamp(vx * .06, -10, 10) + (a.mv ? 0 : work ? Math.sin(T * 1.3 + a.ph) * 1.6 : dw ? Math.sin(T * 9) * 1.4 : 0);
+      a.tilt += (tt - a.tilt) * Math.min(1, dt * 8); a.wob += ((a.mv ? Math.sin(T * 7 + a.ph) * 3 : 0) - a.wob) * Math.min(1, dt * 8);
+      /* étincelles : « frappe » au poste, traînée en déplacement */
+      a.spark -= dt; if (a.spark <= 0) { a.spark = dw ? .09 : work ? .3 : 1e3; if (!a.mv) { spark(a.x + (Math.random() - .5) * 52, a.y + 30, a.c, true); } }
+      a.trail -= dt; if (a.mv && a.trail <= 0 && sp > 40) { a.trail = .045; spark(a.x - vx * .02 + (Math.random() - .5) * 18, a.y + 46, a.c, false); }
+      if (work && T > a.pulseAt) { a.el.classList.add('act'); a.pulseOff = T + 1.5; a.pulseAt = T + 5 + Math.random() * 6; }
+      if (a.pulseOff && T > a.pulseOff && !a.task) { a.el.classList.remove('act'); a.pulseOff = 0; }
+    }
   }
   function stepScenes(dt) {
-    for (const k in actors) { const a = actors[k], f = 1 - Math.exp(-dt * 2.6); a.x += (a.tx - a.x) * f; a.y += (a.ty - a.y) * f; }
-    for (let i = active.length - 1; i >= 0; i--) {
-      const s = active[i], a = actors[s.who], d = Math.hypot(a.tx - a.x, a.ty - a.y);
-      if (s.ph === 'go' && (d < 10 || T - s.t0 > 3.2)) { s.ph = 'dwell'; s.t0 = T; }
-      else if (s.ph === 'dwell' && T - s.t0 > 2.4) endScene(s);
-      else if (s.ph === 'back' && (d < 8 || T - s.t0 > 3.2)) { a.busy = false; active.splice(i, 1); }
+    stepActors(dt); stepFx(dt);
+    for (let i = tasks.length - 1; i >= 0; i--) {
+      const tk = tasks[i], a = actors[tk.who], d = Math.hypot(a.tx - a.x, a.ty - a.y);
+      if (tk.ph === 'go' && (d < 12 || T - tk.t0 > 3.6)) { tk.ph = 'dwell'; tk.t0 = T; arrive(tk); }
+      else if (tk.ph === 'dwell' && T - tk.t0 > (tk.wps[tk.i].d || 1)) { if (tk.i + 1 < tk.wps.length) { tk.i++; gotoWp(tk); } else endTask(tk); }
+      else if (tk.ph === 'home' && (d < 9 || T - tk.t0 > 3.6)) dropTask(tk);
     }
     if (bub.who && T > bubT && T > infoUntil) { bub.classList.remove('on'); }
     if (RM) return;
     if (T >= nextAt && queue.length) {
-      if (qi < queue.length) { const sc = queue[qi]; if (!actors[sc.who].busy && !active.some(s => s.who === sc.who)) { qi++; startScene(sc); } else nextAt = T + 1; }
-      else if (!active.length && !replayAt) replayAt = T + 11;
-      else if (replayAt && T >= replayAt && !active.length) { replayAt = 0; qi = 0; tag = 'rejoue le dernier cycle'; nextAt = T; }
+      if (qi < queue.length) {
+        const sc = queue[qi], a = actors[sc.who];
+        if (a.task && a.task.real) nextAt = T + .8;
+        else { if (a.task) { dropTask(a.task); a.el.classList.remove('act'); } qi++; startScene(sc); }
+      } else if (!tasks.some(t => t.real) && !replayAt) replayAt = T + 9;
+      else if (replayAt && T >= replayAt && !tasks.some(t => t.real)) { replayAt = 0; qi = 0; tag = 'rejoue le dernier cycle'; nextAt = T; }
     }
+    if (T >= ambAt) { ambAt = T + 1.2 + Math.random() * 1.8; ambient(); }
   }
   function loop(ts) {
     if (!running) return; raf = requestAnimationFrame(loop); const dt = Math.min(.1, (ts - last) / 1000); if (dt < .028) return; last = ts; T += dt;
     stepScenes(dt); place(); posBub(); drawF(T);
+    /* qualité adaptative : si la fluidité tombe, on coupe les halos et on réduit les particules */
+    fpsN++; fpsT += dt; if (fpsT >= 2.5) { const f = fpsN / fpsT; fpsN = 0; fpsT = 0; if (T > 4 && f < 21) { if (++slow >= 2 && !lowQ) { lowQ = true; Object.defineProperty(ctx, 'shadowBlur', {get() { return 0; }, set() {}, configurable: true}); } } else slow = 0; }
   }
   function start() { if (RM || running) return; running = true; last = performance.now(); raf = requestAnimationFrame(loop); }
   function stop() { running = false; cancelAnimationFrame(raf); }
   let vis = true; if ('IntersectionObserver' in window) new IntersectionObserver(es => { vis = es[0].isIntersecting; vis && !document.hidden ? start() : stop(); }).observe(room);
   document.addEventListener('visibilitychange', () => { document.hidden ? stop() : (vis && start()); });
-  room.addEventListener('pointerdown', () => { /* tap dans le vide : rien */ });
   layoutF();
   return {
     refresh(isNew) {
       buildPool(); const prev = D.lastTick; buildQueue();
-      if (!RM && queue.length && (isNew || D.lastTick !== prev)) { tag = prev && D.lastTick !== prev ? 'nouveau cycle' : 'rejoue le dernier cycle'; replayAt = 0; nextAt = Math.min(nextAt, T + 1.2); if (!active.length) qi = 0; }
+      if (!RM && queue.length && (isNew || D.lastTick !== prev)) { tag = prev && D.lastTick !== prev ? 'nouveau cycle' : 'rejoue le dernier cycle'; replayAt = 0; nextAt = Math.min(nextAt, T + 1.2); if (!tasks.some(t => t.real)) qi = 0; }
       if (RM || !queue.length) { const q = queue[queue.length - 1]; if (q) say(q.who, q.txt, q.ts, false); else $('tkTxt').textContent = 'en attente de données'; }
-      else if (!running && !active.length && T < 1) { /* le premier cycle part tout seul */ }
       if (!running) { drawF(T); } layoutF();
     },
-    start, info, T: () => T, actors, setQ(i) { qi = i; nextAt = T; }
+    start, info, T: () => T, actors, tasks, setQ(i) { qi = i; nextAt = T; }
   };
 }
 
@@ -582,7 +709,38 @@ async function candles(market, limit) {
 async function loadCandles() {
   const P = D.pos || [], jobs = P.map(async p => { const lim = clamp(Math.ceil((Date.now() - p.entry_ts) / 3.6e6) + 10, 30, 200), c = await candles(p.m, lim); if (c) D.candles[p.m] = c; });
   jobs.push((async () => { const c = await candles('BTC-EUR', 168); if (c) D.btcC = c; })());
-  await Promise.all(jobs); if (floor) floor.refresh(false);
+  jobs.push((async () => { const c = await candles('ETH-EUR', 30); if (c) D.ethC = c; })());
+  await Promise.all(jobs); renderMq(); if (floor) floor.refresh(false);
+}
+/* prix en direct (API publique Bitvavo, sans clé) : bandeau défilant + dernière bougie des écrans */
+async function pullLive() {
+  if (document.hidden) return;
+  try {
+    const r = await fetch('https://api.bitvavo.com/v2/ticker/price'); if (!r.ok) return; const a = await r.json(); if (!Array.isArray(a)) return;
+    const want = new Set(['BTC-EUR', 'ETH-EUR'].concat((D.pos || []).map(p => p.m)));
+    a.forEach(x => { if (want.has(x.market) && +x.price > 0) LIVE.price[x.market] = +x.price; }); LIVE.ts = Date.now(); renderMq();
+  } catch (e) { /* on garde les derniers prix connus */ }
+}
+function mqItems() {
+  const out = [], chg = (cs, px) => { if (!cs || cs.length < 26 || !ok(px)) return null; const ref = cs[cs.length - 25][4]; return ref > 0 ? px / ref - 1 : null; };
+  const bp = ok(LIVE.price['BTC-EUR']) ? LIVE.price['BTC-EUR'] : D.btcC && D.btcC.length ? D.btcC[D.btcC.length - 1][4] : null;
+  const ep = ok(LIVE.price['ETH-EUR']) ? LIVE.price['ETH-EUR'] : D.ethC && D.ethC.length ? D.ethC[D.ethC.length - 1][4] : null;
+  out.push({k: 'BTC', px: bp, ch: chg(D.btcC, bp), lab: '24 h'}); out.push({k: 'ETH', px: ep, ch: chg(D.ethC, ep), lab: '24 h'});
+  (D.pos || []).forEach(p => { const cs = D.candles[p.m], px = ok(LIVE.price[p.m]) ? LIVE.price[p.m] : cs && cs.length ? cs[cs.length - 1][4] : p.mark; out.push({k: p.s, px, ch: ok(px) && p.entry > 0 ? px / p.entry - 1 : null, lab: 'vs entrée', pos: 1}); });
+  return out;
+}
+const fmtPx = v => !ok(v) ? '—' : nf({minimumFractionDigits: v >= 1000 ? 0 : v >= 1 ? 2 : v >= .1 ? 4 : 5, maximumFractionDigits: v >= 1000 ? 0 : v >= 1 ? 2 : v >= .1 ? 4 : 5}).format(v) + ' €';
+let mqKey = '';
+function renderMq() {
+  const box = $('mqt'); if (!box) return; const it = mqItems(), key = it.map(x => x.k).join('|');
+  if (key !== mqKey) {
+    mqKey = key; const one = it.map((x, i) => '<span class="mi' + (x.pos ? ' po' : '') + '" data-i="' + i + '"><b>' + x.k + '</b><em class="px"></em><i class="cg"></i><small>' + x.lab + '</small></span>').join('');
+    box.innerHTML = '<div class="mr">' + one + '</div><div class="mr" aria-hidden="true">' + one + '</div>';
+  }
+  it.forEach((x, i) => box.querySelectorAll('[data-i="' + i + '"]').forEach(el => {
+    el.querySelector('.px').textContent = fmtPx(x.px); const c = el.querySelector('.cg'); c.textContent = x.ch === null ? '' : (x.ch >= 0 ? '▲ +' : '▼ −') + Math.abs(x.ch * 100).toFixed(1).replace('.', ',') + ' %'; c.className = 'cg ' + (x.ch === null ? '' : x.ch >= 0 ? 'up' : 'dn');
+  }));
+  const w = box.firstChild ? box.firstChild.scrollWidth : 0; if (w) box.style.setProperty('--mqd', Math.max(20, w / 48).toFixed(0) + 's');
 }
 
 /* ===================== chargement + démarrage ===================== */
@@ -596,10 +754,12 @@ async function load() {
   if (eq) safe(() => eq.refresh());
   if (floor) safe(() => floor.refresh(!firstLoad));
   firstLoad = false;
-  loadCandles();
+  loadCandles(); pullLive();
 }
 try { eq = EquityChart(); floor = Floor(); floor.start(); window.__neon = {floor, D}; document.querySelectorAll('.ag').forEach(el => el.addEventListener('click', () => floor.info(el.dataset.k))); } catch (e) { console.error(e); }
 load();
 setInterval(() => { if (!document.hidden) load(); }, 5 * 60e3);
+setInterval(pullLive, 30e3);
+if ('IntersectionObserver' in window && $('mq')) new IntersectionObserver(es => $('mq').classList.toggle('paused', !es[0].isIntersecting)).observe($('mq'));
 document.addEventListener('visibilitychange', () => { if (!document.hidden) load(); });
 })();
