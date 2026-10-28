@@ -26,7 +26,7 @@ const TAU = Math.PI * 2;
 const hash = s => { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0) / 4294967296; };
 const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
 const COL = {cy: '#27e6ff', mg: '#ff3dd8', li: '#8dff3a', vi: '#a86bff', go: '#ffcf3a', g: '#3dff9a', r: '#ff4d7a', mut: '#6d7ba0'};
-const D = {p: null, ui: null, st: null, team: null, wide: null, ghosts: null, curve: [], base: null, pos: [], closed: [], btc: [], btcHold: [], nClos: null, candles: {}, btcC: null, lastTick: 0};
+const D = {p: null, ui: null, st: null, team: null, wide: null, ghosts: null, curve: [], base: null, pos: [], closed: [], nClos: null, candles: {}, btcC: null, lastTick: 0};
 const bookOf = p => p && p.carnets && p.carnets[BOOK];
 let eq = null, floor = null;
 
@@ -112,7 +112,7 @@ const lastEv = (role, kind) => { const j = D.team && D.team.journal; if (!Array.
 function renderAgents() {
   const now = Date.now(), r = D.team && D.team.resume, ex = r && r.derniere_execution_reelle, age = k => ex && ex[k] && ok(ex[k].ts) ? ' · il y a ' + ageStr(now - ex[k].ts) : '';
   const inst = latestWide(), cyc = latestCycle(), ex2 = D.wide && Array.isArray(D.wide.exclusions) ? D.wide.exclusions : [], kept = (ex2.find(e => e.k === 'retenu') || {}).n;
-  const set = (k, t) => { const el = $('a_' + k); if (el) el.textContent = t; };
+  const set = (k, t) => { document.querySelectorAll('[data-st="' + k + '"]').forEach(el => { el.textContent = t; }); };
   set('scout', [inst && ok(inst.n_eur) ? inst.n_eur + ' marchés analysés' : null, ok(kept) ? kept + ' retenus' : null, cyc && ok(cyc.n_anomalies) ? cyc.n_anomalies + ' anomalies' : null].filter(Boolean).join(' · ') + age('SCOUT') || '—');
   const lat = latent();
   set('trader', D.pos ? D.pos.length + ' position' + (D.pos.length > 1 ? 's' : '') + ' ouverte' + (D.pos.length > 1 ? 's' : '') + ' · latent ' + eur(lat, true) + age('TRADER') : '—');
@@ -160,7 +160,7 @@ function renderScan() {
 /* ===================== COURBE DU CAPITAL ===================== */
 function EquityChart() {
   const cv = $('eqc'), wrap = $('chw'), tip = $('tip'), ctx = cv.getContext('2d');
-  let range = '7J', showBtc = true, W = 0, H = 0, dpr = 1, hover = null, prog = RM ? 1 : 0, t0 = performance.now(), geo = null, raf = 0;
+  let range = '7J', W = 0, H = 0, dpr = 1, hover = null, prog = RM ? 1 : 0, t0 = performance.now(), geo = null, raf = 0;
   const PAD = {l: 8, r: 8, t: 14, b: 22};
   /* série BTC « garder » rebasée sur le capital au début de la fenêtre (btc_hold du cycle : BTC-EUR acheté au départ) */
   const stepAt = (arr, t) => { if (!arr.length || t < arr[0].ts) return null; let lo = 0, hi = arr.length - 1; while (lo < hi) { const m = (lo + hi + 1) >> 1; if (arr[m].ts <= t) lo = m; else hi = m - 1; } return arr[lo]; };
@@ -192,14 +192,11 @@ function EquityChart() {
     ctx.clearRect(0, 0, W, H);
     const v = visible(), base = D.base;
     if (v.length < 2) { ctx.fillStyle = COL.mut; ctx.font = '12px ' + getComputedStyle(document.body).fontFamily; ctx.textAlign = 'center'; ctx.fillText(D.curve.length ? 'Pas assez de points sur cette période' : '—', W / 2, H / 2); geo = null; return; }
-    const t0v = v[0].ts, t1v = v[v.length - 1].ts, bt = D.btcHold;
-    /* BTC rebasé */
-    let btcS = null;
-    if (showBtc && bt.length) { const b0 = stepAt(bt, t0v); if (b0 && b0.equity > 0) btcS = v.map(q => { const b = stepAt(bt, q.ts); return b ? v[0].equity * b.equity / b0.equity : null; }); if (btcS && btcS.some(x => x === null)) btcS = null; }
-    const vals = v.map(q => q.equity).concat(btcS || [], base !== null ? [base] : []);
+    const t0v = v[0].ts, t1v = v[v.length - 1].ts;
+    const vals = v.map(q => q.equity).concat(base !== null ? [base] : []);
     let lo = Math.min(...vals), hi = Math.max(...vals); const pad = (hi - lo) * .14 || 1; lo -= pad; hi += pad;
     const X = t => PAD.l + (t - t0v) / ((t1v - t0v) || 1) * (W - PAD.l - PAD.r), Y = y => PAD.t + (1 - (y - lo) / (hi - lo)) * (H - PAD.t - PAD.b);
-    geo = {X, Y, t0v, t1v, v, btcS};
+    geo = {X, Y, t0v, t1v, v};
     /* grille + axes */
     ctx.font = '10px ' + getComputedStyle(document.body).fontFamily; ctx.textBaseline = 'middle';
     for (let i = 0; i <= 3; i++) { const yy = PAD.t + i * (H - PAD.t - PAD.b) / 3, val = hi - i * (hi - lo) / 3; ctx.strokeStyle = 'rgba(120,160,255,.09)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(PAD.l, yy); ctx.lineTo(W - PAD.r, yy); ctx.stroke(); ctx.fillStyle = 'rgba(150,170,220,.55)'; ctx.textAlign = 'left'; ctx.fillText(nf({maximumFractionDigits: 0}).format(val) + ' €', PAD.l + 2, yy - 7); }
@@ -207,15 +204,13 @@ function EquityChart() {
     [[0, 'left'], [.5, 'center'], [1, 'right']].forEach(([f, al]) => { const t = t0v + (t1v - t0v) * f; ctx.textAlign = al; ctx.fillText(range === '24H' ? fmtH(t) : fmtD(t), PAD.l + f * (W - PAD.l - PAD.r) + (al === 'left' ? 2 : al === 'right' ? -2 : 0), H - 6); });
     if (base !== null && base > lo && base < hi) { ctx.setLineDash([4, 5]); ctx.strokeStyle = 'rgba(200,215,255,.35)'; ctx.beginPath(); ctx.moveTo(PAD.l, Y(base)); ctx.lineTo(W - PAD.r, Y(base)); ctx.stroke(); ctx.setLineDash([]); ctx.fillStyle = 'rgba(200,215,255,.55)'; ctx.textAlign = 'right'; ctx.fillText('départ ' + nf({maximumFractionDigits: 0}).format(base) + ' €', W - PAD.r - 2, Y(base) - 4); }
     const upto = Math.ceil(prog * (v.length - 1)), part = prog * (v.length - 1) - Math.floor(prog * (v.length - 1));
-    /* BTC */
-    if (btcS) { const pts = v.map((q, i) => [X(q.ts), Y(btcS[i])]), m = spline(pts); ctx.save(); ctx.strokeStyle = COL.go; ctx.globalAlpha = .85; ctx.lineWidth = 1.6; ctx.setLineDash([5, 4]); ctx.shadowColor = COL.go; ctx.shadowBlur = 6; ctx.beginPath(); path(ctx, pts, m, upto); ctx.stroke(); ctx.restore(); }
     /* équité */
     const pts = v.map(q => [X(q.ts), Y(q.equity)]), m = spline(pts), endX = prog >= 1 ? pts[pts.length - 1][0] : pts[Math.max(0, upto - 1)][0] + (pts[Math.min(pts.length - 1, upto)][0] - pts[Math.max(0, upto - 1)][0]) * part;
     ctx.save(); ctx.beginPath(); ctx.rect(0, 0, endX + 1, H); ctx.clip();
-    const gr = ctx.createLinearGradient(0, PAD.t, 0, H - PAD.b); gr.addColorStop(0, 'rgba(39,230,255,.38)'); gr.addColorStop(.6, 'rgba(120,80,255,.12)'); gr.addColorStop(1, 'rgba(120,80,255,0)');
+    const gr = ctx.createLinearGradient(0, PAD.t, 0, H - PAD.b); gr.addColorStop(0, 'rgba(61,255,154,.34)'); gr.addColorStop(.6, 'rgba(61,255,154,.09)'); gr.addColorStop(1, 'rgba(61,255,154,0)');
     ctx.beginPath(); path(ctx, pts, m, pts.length); ctx.lineTo(pts[pts.length - 1][0], H - PAD.b); ctx.lineTo(pts[0][0], H - PAD.b); ctx.closePath(); ctx.fillStyle = gr; ctx.fill();
-    const lg = ctx.createLinearGradient(PAD.l, 0, W - PAD.r, 0); lg.addColorStop(0, COL.cy); lg.addColorStop(1, '#7aa2ff');
-    ctx.shadowColor = COL.cy; ctx.shadowBlur = 10; ctx.strokeStyle = lg; ctx.lineWidth = 2.4; ctx.lineJoin = 'round'; ctx.beginPath(); path(ctx, pts, m, pts.length); ctx.stroke(); ctx.restore();
+    const lg = ctx.createLinearGradient(PAD.l, 0, W - PAD.r, 0); lg.addColorStop(0, '#2fd98a'); lg.addColorStop(1, '#8dffc4');
+    ctx.shadowColor = COL.g; ctx.shadowBlur = 9; ctx.strokeStyle = lg; ctx.lineWidth = 2.2; ctx.lineJoin = 'round'; ctx.beginPath(); path(ctx, pts, m, pts.length); ctx.stroke(); ctx.restore();
     /* repères achats / ventes (trades réels du carnet) */
     geo.marks = [];
     const b = bookOf(D.p), P = b && Array.isArray(b.positions) ? b.positions : [];
@@ -231,12 +226,12 @@ function EquityChart() {
       ctx.closePath(); ctx.stroke(); ctx.fill(); ctx.restore();
     }
     /* point final pulsant */
-    if (prog >= 1) { const lx = pts[pts.length - 1][0], ly = pts[pts.length - 1][1], k = RM ? 0 : (performance.now() % 1800) / 1800; ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(lx, ly, 3.2, 0, TAU); ctx.fill(); ctx.strokeStyle = 'rgba(39,230,255,' + (1 - k) * .8 + ')'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(lx, ly, 3 + k * 10, 0, TAU); ctx.stroke(); }
+    if (prog >= 1) { const lx = pts[pts.length - 1][0], ly = pts[pts.length - 1][1], k = RM ? 0 : (performance.now() % 1800) / 1800; ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(lx, ly, 3.2, 0, TAU); ctx.fill(); ctx.strokeStyle = 'rgba(61,255,154,' + (1 - k) * .8 + ')'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(lx, ly, 3 + k * 10, 0, TAU); ctx.stroke(); }
     /* curseur */
     if (hover !== null) {
       const q = v[hover.i], hx = X(q.ts), hy = Y(q.equity);
       ctx.strokeStyle = 'rgba(255,255,255,.35)'; ctx.lineWidth = 1; ctx.setLineDash([3, 4]); ctx.beginPath(); ctx.moveTo(hx, PAD.t); ctx.lineTo(hx, H - PAD.b); ctx.stroke(); ctx.setLineDash([]);
-      ctx.fillStyle = '#fff'; ctx.shadowColor = COL.cy; ctx.shadowBlur = 10; ctx.beginPath(); ctx.arc(hx, hy, 4.5, 0, TAU); ctx.fill(); ctx.shadowBlur = 0;
+      ctx.fillStyle = '#fff'; ctx.shadowColor = COL.g; ctx.shadowBlur = 10; ctx.beginPath(); ctx.arc(hx, hy, 4.5, 0, TAU); ctx.fill(); ctx.shadowBlur = 0;
     }
   }
   function loop() { raf = 0; const t = performance.now(); prog = RM ? 1 : Math.min(1, (t - t0) / 900); draw(); if (!document.hidden && visibleNow) raf = requestAnimationFrame(loop); }
@@ -245,7 +240,6 @@ function EquityChart() {
   document.addEventListener('visibilitychange', () => { if (!document.hidden) kick(); });
   function showTip(i, ex, ey) {
     const v = geo.v, q = v[i], base = D.base; let html = `<time>${fmtDT(q.ts)} (Paris)</time><b>${eur(q.equity)}</b>` + (base !== null ? ` <span class="${cls(q.equity - base)}">${eur(q.equity - base, true)}</span>` : '');
-    if (geo.btcS && ok(geo.btcS[i])) html += `<br><span style="color:${COL.go}">BTC garder ${eur(geo.btcS[i])}</span>`;
     const near = (geo.marks || []).filter(mk => mk.px !== undefined && Math.abs(mk.px - ex) < 16 && Math.abs(mk.py - ey) < 22).sort((a, z) => Math.abs(a.px - ex) - Math.abs(z.px - ex))[0];
     if (near) { const x = near.x; html += `<span class="mk"><b style="color:${near.kind === 'buy' ? COL.li : (x.pnl >= 0 ? COL.g : COL.r)}">${near.kind === 'buy' ? 'ACHAT' : 'VENTE'} ${esc(sym(x.market))}</b> · ${fmtDT(near.t)}<br>${near.kind === 'buy' ? '@ ' + px(x.entry_px) : '@ ' + px(x.exit_px) + ' · ' + eur(x.pnl, true) + ' · ' + esc(String(x.reason || '').replace(/_/g, ' '))}</span>`; }
     tip.innerHTML = html; tip.hidden = false;
@@ -263,13 +257,7 @@ function EquityChart() {
   $('rng').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; range = b.dataset.r; $('rng').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); hover = null; tip.hidden = true; prog = RM ? 1 : 0; t0 = performance.now(); legend(); kick(); });
   new ResizeObserver(layout).observe(wrap);
   function legend() {
-    const b0 = D.btcHold.length ? D.btcHold : null, v = visible(); let btcTxt = '';
-    if (b0 && v.length >= 2) { const a = stepAt(b0, v[0].ts), z = stepAt(b0, v[v.length - 1].ts); if (a && z && a.equity > 0) btcTxt = ' ' + pct(z.equity / a.equity - 1); }
-    const g10 = D.ghosts && Array.isArray(D.ghosts.carnets) ? D.ghosts.carnets.find(c => c.id === 'G10') : null;
-    $('leg').innerHTML = `<span><i style="background:${COL.cy}"></i>Équité</span>` + (b0 ? `<button id="legBtc" class="${showBtc ? '' : 'off'}"><i style="background:repeating-linear-gradient(90deg,${COL.go} 0 4px,transparent 4px 7px)"></i>BTC garder${btcTxt}</button>` : '')
-      + `<span><i class="d" style="background:${COL.li}"></i>achat</span><span><i class="d" style="background:${COL.g}"></i>vente</span>`
-      + `<span><i style="background:${COL.mg}"></i>G10 hasard : ${g10 ? (ok(g10.pris) ? g10.pris : '—') + ' trade' + (g10.pris > 1 ? 's' : '') + ' pris, ' + (ok(g10.clos) ? g10.clos : '—') + ' clos — pas de courbe' : '—'}</span>`;
-    const lb = $('legBtc'); if (lb) lb.onclick = () => { showBtc = !showBtc; lb.classList.toggle('off', !showBtc); legend(); prog = 1; draw(); };
+    $('leg').innerHTML = `<span><i class="d" style="background:${COL.li}"></i>achat</span><span><i class="d" style="background:${COL.g}"></i>vente gagnante</span><span><i class="d" style="background:${COL.r}"></i>vente perdante</span><span><i style="background:${COL.g}"></i>capital (€, après frais)</span>`;
   }
   return {refresh() { legend(); t0 = performance.now(); prog = RM ? 1 : (prog >= 1 ? 1 : prog); layout(); kick(); }};
 }
@@ -466,6 +454,23 @@ function Floor() {
       ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(bx, by, 5, 0, TAU); ctx.fill(); ctx.fillStyle = A.c; ctx.globalAlpha = .6; ctx.beginPath(); ctx.arc(bx, by, 11, 0, TAU); ctx.fill(); ctx.restore();
     }
   }
+  /* lignes de constellation : chaque esprit relié à l'anneau holographique central (suivent les déplacements) */
+  function links(t) {
+    const cx = 512, cy = 412; ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.lineCap = 'round';
+    const ks = Object.keys(actors), pts = [];
+    ks.forEach((k, i) => {
+      const a = actors[k], ax = a.x, ay = a.y + 28, mx = (ax + cx) / 2 + (ax < cx ? -1 : 1) * 18, my = (ay + cy) / 2 + 26;
+      ctx.strokeStyle = a.c; ctx.shadowColor = a.c; ctx.shadowBlur = 10; ctx.lineWidth = 1.5; ctx.globalAlpha = .55; ctx.beginPath(); ctx.moveTo(ax, ay); ctx.quadraticCurveTo(mx, my, cx, cy); ctx.stroke();
+      ctx.shadowBlur = 0;
+      for (let j = 1; j <= 3; j++) { const u = j / 4, x = (1 - u) * (1 - u) * ax + 2 * (1 - u) * u * mx + u * u * cx, y = (1 - u) * (1 - u) * ay + 2 * (1 - u) * u * my + u * u * cy, tw = .55 + .45 * Math.sin(t * 2.2 + i * 1.7 + j * 2.3); ctx.globalAlpha = tw; ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(x, y, 2.1, 0, TAU); ctx.fill(); ctx.globalAlpha = tw * .5; ctx.fillStyle = a.c; ctx.beginPath(); ctx.arc(x, y, 5, 0, TAU); ctx.fill(); }
+      const u = ((t * .22 + i * .2) % 1), x = (1 - u) * (1 - u) * ax + 2 * (1 - u) * u * mx + u * u * cx, y = (1 - u) * (1 - u) * ay + 2 * (1 - u) * u * my + u * u * cy; ctx.globalAlpha = .9; ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(x, y, 2.6, 0, TAU); ctx.fill();
+      pts.push([ax, ay]);
+    });
+    /* liaisons entre voisins (constellation) */
+    ctx.globalAlpha = .22; ctx.lineWidth = 1; ctx.strokeStyle = '#9fb4ff'; ctx.setLineDash([2, 6]);
+    [['scout', 'trader'], ['trader', 'sentinel'], ['scout', 'arbitre'], ['sentinel', 'research'], ['arbitre', 'research']].forEach(([p, q]) => { ctx.beginPath(); ctx.moveTo(actors[p].x, actors[p].y + 28); ctx.lineTo(actors[q].x, actors[q].y + 28); ctx.stroke(); });
+    ctx.restore();
+  }
   function drawF(t) {
     const k = cv.width / 1024; ctx.setTransform(k, 0, 0, k, 0, 0); ctx.clearRect(0, 0, 1024, 768);
     screen('scC', dRadar); screen('scL', dFunnel); screen('scR', dTop);
@@ -474,7 +479,7 @@ function Floor() {
     screen('reC', dGhostBars); screen('reL', dDonut); screen('reR', dGhostPnl);
     screen('trL', dPosChart); screen('trR', dPosPnl);
     screen('wall', dWall); screen('wL', dTarget); screen('wR', dExpo);
-    holo(t); beams(t);
+    links(t); holo(t); beams(t);
   }
 
   /* ---- scènes : rejouent les événements réels du dernier cycle (team.json) ---- */
@@ -527,7 +532,7 @@ function Floor() {
     bub.style.setProperty('--c', c.c); bub.textContent = txt; bub.who = who; bub.classList.add('on'); bub.hidden = false; bubT = T + (force ? 4.5 : 2.6);
   }
   let bubT = 0;
-  function info(k) { const c = CH[k], el = $('a_' + k); infoUntil = T + 6; nextAt = Math.max(nextAt, T + 5); say(k, el ? el.textContent : '—', 0, true); actors[k].el.classList.add('act'); setTimeout(() => { if (!actors[k].busy) actors[k].el.classList.remove('act'); }, 2500); }
+  function info(k) { const c = CH[k], el = document.querySelector('[data-st="' + k + '"]'); infoUntil = T + 6; nextAt = Math.max(nextAt, T + 5); say(k, el ? el.textContent : '—', 0, true); actors[k].el.classList.add('act'); setTimeout(() => { if (!actors[k].busy) actors[k].el.classList.remove('act'); }, 2500); }
   function posBub() {
     if (!bub.who || bub.hidden) return; const a = actors[bub.who], w = room.clientWidth, sr = stage.getBoundingClientRect(), rr = room.getBoundingClientRect(), vl = sr.left - rr.left, vr = vl + sr.width, bw = bub.offsetWidth || 120;
     const x = clamp(a.x * S, vl + bw / 2 + 4, vr - bw / 2 - 4); bub.style.left = x + 'px'; bub.style.top = Math.max(bub.offsetHeight + 4, (a.y - CH[bub.who].s * (innerWidth < 700 ? .62 : .5)) * S) + 'px'; void w;
@@ -566,7 +571,7 @@ function Floor() {
       else if (!running && !active.length && T < 1) { /* le premier cycle part tout seul */ }
       if (!running) { drawF(T); } layoutF();
     },
-    start, T: () => T, actors, setQ(i) { qi = i; nextAt = T; }
+    start, info, T: () => T, actors, setQ(i) { qi = i; nextAt = T; }
   };
 }
 
@@ -587,15 +592,13 @@ async function load() {
   Object.assign(D, {p, ui, st, team, wide, ghosts});
   const safe = f => { try { f(); } catch (e) { console.error(e); } };
   D.pos = buildPositions(p, ui);
-  const bh = p && p.carnets && p.carnets.btc_hold && Array.isArray(p.carnets.btc_hold.courbe) ? p.carnets.btc_hold.courbe.filter(q => ok(q.equity) && ok(q.ts)) : [];
-  D.btcHold = bh;
   safe(renderTop); safe(renderKpi); safe(renderStrip); safe(renderPos); safe(renderLog); safe(renderAgents); safe(renderFoot); safe(renderScan); safe(renderGhosts);
   if (eq) safe(() => eq.refresh());
   if (floor) safe(() => floor.refresh(!firstLoad));
   firstLoad = false;
   loadCandles();
 }
-try { eq = EquityChart(); floor = Floor(); floor.start(); window.__neon = {floor, D}; } catch (e) { console.error(e); }
+try { eq = EquityChart(); floor = Floor(); floor.start(); window.__neon = {floor, D}; document.querySelectorAll('.ag').forEach(el => el.addEventListener('click', () => floor.info(el.dataset.k))); } catch (e) { console.error(e); }
 load();
 setInterval(() => { if (!document.hidden) load(); }, 5 * 60e3);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) load(); });
