@@ -4,7 +4,7 @@
 'use strict';
 const $ = id => document.getElementById(id);
 const RM = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
-const BOOK = 'ultra-1.2-test';
+let BOOK = 'ultra-1.3';          // relance 04/11/2026 : carnet principal ORION ULTRA 1.3 ; repli sur l'ancien carnet (archivé) tant que le moteur n'a pas publié 1.3
 const DATA = new URL('data/', document.currentScript.src).href;
 const ok = x => typeof x === 'number' && isFinite(x);
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
@@ -27,7 +27,7 @@ const hash = s => { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^
 const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
 const COL = {cy: '#27e6ff', mg: '#ff3dd8', li: '#8dff3a', vi: '#a86bff', go: '#ffcf3a', g: '#3dff9a', r: '#ff4d7a', mut: '#6d7ba0'};
 const D = {p: null, ui: null, st: null, team: null, wide: null, ghosts: null, curve: [], base: null, pos: [], closed: [], nClos: null, candles: {}, btcC: null, lastTick: 0};
-const bookOf = p => p && p.carnets && p.carnets[BOOK];
+const bookOf = p => { if (p && p.carnets) BOOK = p.carnets['ultra-1.3'] ? 'ultra-1.3' : 'ultra-1.2-test'; return p && p.carnets && p.carnets[BOOK]; };
 let eq = null, floor = null;
 
 /* ===================== PANNEAUX ===================== */

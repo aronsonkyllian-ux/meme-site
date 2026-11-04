@@ -329,7 +329,7 @@ function drawWallScreen(c, nw, nh, t) {
   const tall = L.mode === 'T', cu = D.curve || [], perf = D.team && D.team.resume && D.team.resume.performance || {}, le = lastEq(), base = ok(D.base) ? D.base : (cu.length ? cu[0].equity : null);
   c.fillStyle = '#050a1a'; c.fillRect(0, 0, nw, nh);
   c.fillStyle = 'rgba(39,230,255,.05)'; for (let y = 0; y < nh; y += 4) c.fillRect(0, y, nw, 1);
-  lbl(c, 'CAPITAL · CARNET ULTRA 1.2 · PAPER', 12, 8, '#9fb2e6', 11); const nowS = new Intl.DateTimeFormat('fr-FR', {timeZone: 'Europe/Paris', hour: '2-digit', minute: '2-digit', hourCycle: 'h23'}).format(Date.now());
+  lbl(c, 'CAPITAL · CARNET ULTRA 1.3 · PAPER', 12, 8, '#9fb2e6', 11); const nowS = new Intl.DateTimeFormat('fr-FR', {timeZone: 'Europe/Paris', hour: '2-digit', minute: '2-digit', hourCycle: 'h23'}).format(Date.now());
   lbl(c, 'PARIS ' + nowS, nw - 12, 8, COL.cy, 11, 'right');
   const cx0 = 12, cy0 = 28, cw = tall ? nw - 24 : Math.round(nw * .57), ch = tall ? 100 : nh - 38;
   c.strokeStyle = 'rgba(39,230,255,.13)'; c.lineWidth = 1; for (let i = 0; i <= 4; i++) { c.beginPath(); c.moveTo(cx0, cy0 + i * ch / 4); c.lineTo(cx0 + cw, cy0 + i * ch / 4); c.stroke(); }
